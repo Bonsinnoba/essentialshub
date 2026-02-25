@@ -501,16 +501,16 @@ export const getBranches = async () => {
         return await response.json();
     } catch (error) {
         console.error('Error fetching branches:', error);
-        throw error;
+        return [];
     }
 };
 
 export const addBranch = async (branchData) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/super_branches.php`, {
+        const response = await fetch(`${API_BASE_URL}/admin_branches.php`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify(branchData),
+            body: JSON.stringify({ action: 'add', ...branchData }),
         });
         return await response.json();
     } catch (error) {

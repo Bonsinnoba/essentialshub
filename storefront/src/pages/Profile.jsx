@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Camera, Star, ShieldCheck, RefreshCcw, Lock } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationContext';
+import { updateProfile } from '../services/api';
 
 export default function Profile() {
   const { user, updateUser, resetUser } = useUser();
@@ -44,15 +45,40 @@ export default function Profile() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    updateUser(formData);
-    addNotification('Profile updated successfully', 'info');
+  const handleSave = async () => {
+    try {
+        const response = await updateProfile(formData);
+        if (response.success) {
+            updateUser(formData);
+            addNotification('Profile updated successfully', 'success');
+        } else {
+            addNotification(response.message || 'Failed to update profile', 'error');
+        }
+    } catch (err) {
+        addNotification('Network error while updating profile', 'error');
+    }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (window.confirm('Are you sure you want to reset your profile to defaults? All changes and your profile image will be removed.')) {
-      resetUser();
-      addNotification('Profile restored to defaults', 'info');
+        try {
+            // Send empty data/null flags to backend
+            const defaults = {
+                name: 'Guest User', 
+                address: '', 
+                profileImage: null,
+                avatar: 'G'
+            };
+            const response = await updateProfile(defaults);
+            if (response.success) {
+                resetUser();
+                addNotification('Profile restored to defaults', 'info');
+            } else {
+                addNotification('Failed to reset profile server-side', 'error');
+            }
+        } catch (err) {
+            addNotification('Network error while resetting profile', 'error');
+        }
     }
   };
 
@@ -118,12 +144,22 @@ export default function Profile() {
                         return;
                     }
                     const reader = new FileReader();
-                    reader.onloadend = () => {
+                    reader.onloadend = async () => {
                       const base64String = reader.result;
+                      // Optimistically update context immediately for snappy UI
                       updateUser({ profileImage: base64String });
-                      // Force local storage update immediately in case context is slow (though context handles it)
-                      // No, context handles it.
-                      addNotification('Profile image updated successfully', 'success');
+                      
+                      try {
+                          const response = await updateProfile({ profileImage: base64String });
+                          if (response.success) {
+                              addNotification('Profile image uploaded successfully', 'success');
+                          } else {
+                              addNotification(response.message || 'Failed to save image to server', 'error');
+                              // Revert if failed? (Leaving optimistic for now)
+                          }
+                      } catch (err) {
+                          addNotification('Network error while saving image', 'error');
+                      }
                     };
                     reader.readAsDataURL(file);
                   }
