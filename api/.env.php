@@ -10,4 +10,5 @@ return [
     'DB_PASS' => 'root',
     'DB_NAME' => 'local',
     'PAYSTACK_SECRET' => 'sk_test_ReplaceWithYourSecretKeyHere',
+    'PASSWORD_PEPPER' => 'ehub_v3_super_secret_pepper_2024_@#!', // Change this to a random string
 ];
