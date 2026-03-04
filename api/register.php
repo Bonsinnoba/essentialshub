@@ -183,8 +183,8 @@ try {
     // Dispatch verification code
     require_once 'notifications.php';
     $notifier = new NotificationService();
-    $subject = "Your EssentialsHub Verification Code";
-    $msg = "Welcome to EssentialsHub! Your verification code is: {$verificationCode}. Please enter this code to activate your account.";
+    $subject = "Your ElectroCom Verification Code";
+    $msg = "Welcome to ElectroCom! Your verification code is: {$verificationCode}. Please enter this code to activate your account.";
 
     if ($verificationMethod === 'sms') {
         $notifier->sendSMS($phone, $msg);
@@ -196,7 +196,7 @@ try {
     $token = generateToken($userId);
 
     // Create a welcome notification
-    $welcomeStmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Welcome to EssentialsHub!', 'We are excited to have you here. Start exploring our premium products!', 'info')");
+    $welcomeStmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Welcome to ElectroCom!', 'We are excited to have you here. Start exploring our premium products!', 'info')");
     $welcomeStmt->execute([$userId]);
 
     echo json_encode([

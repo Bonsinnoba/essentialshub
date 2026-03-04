@@ -76,7 +76,7 @@ export default function Login() {
             <ShieldCheck size={32} />
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 8px 0' }}>Admin Login</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Essentialshub Management Dashboard</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>ElectroCom Management Dashboard</p>
         </div>
 
         {error && (
@@ -105,7 +105,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field" 
-                placeholder="admin@essentialshub.com" 
+                placeholder="admin@electrocom.com" 
                 required
                 style={{ paddingLeft: '40px' }}
               />

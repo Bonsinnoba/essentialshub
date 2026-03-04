@@ -24,7 +24,7 @@ try {
     // Global Security Middleware
     if (file_exists('security.php')) {
         require_once 'security.php';
-        
+
         // --- NEW: Debug Mode Logic ---
         if (isDebugEnabled()) {
             ini_set('display_errors', 1);
@@ -40,7 +40,7 @@ try {
     // SECURITY: Don't expose database credentials/paths in production
     // UNLESS Debug Mode is explicitly enabled
     $message = 'Internal Server Error: Database Connection Failed.';
-    
+
     // Check debug status if security.php was loaded, otherwise check file directly
     $debug = false;
     if (function_exists('isDebugEnabled')) {
@@ -54,9 +54,9 @@ try {
     }
 
     if ($debug) {
-        $message = "DEBUG: " . $e->getMessage();
+        $message = "DATABASE CONNECTION ERROR: " . $e->getMessage();
     } else {
-        error_log($e->getMessage());
+        error_log("Database connection failed: " . $e->getMessage());
     }
 
     header('Content-Type: application/json');

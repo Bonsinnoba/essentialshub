@@ -89,7 +89,7 @@ export default function Support({ searchQuery = '' }) {
       }}>
         <div>
           <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-1px' }}>Help & Support</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '4px' }}>Dedicated support to ensure your success with EssentialsHub.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '4px' }}>Dedicated support to ensure your success with ElectroCom.</p>
         </div>
       </div>
 
@@ -256,8 +256,8 @@ export default function Support({ searchQuery = '' }) {
                 <div style={{ fontWeight: 800, fontSize: '18px', marginBottom: '6px' }}>Email Inquiry</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5' }}>For detailed requests, returns or order queries</div>
               </div>
-              <a href="mailto:support@essentialshub.com" className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px' }}>
-                support@essentialshub.com
+              <a href="mailto:support@electrocom.com" className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px' }}>
+                support@electrocom.com
               </a>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default function Support({ searchQuery = '' }) {
           <span style={{ fontWeight: 800, fontSize: '18px' }}>We're here for you</span>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '500px', margin: '0 auto', lineHeight: '1.6' }}>
-          Our mission is to provide the best electronics with world-class support. EssentialsHub is community-driven and always ready to help.
+          Our mission is to provide the best electronics with world-class support. ElectroCom is community-driven and always ready to help.
         </p>
       </div>
     </div>

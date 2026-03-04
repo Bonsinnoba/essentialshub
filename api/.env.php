@@ -4,13 +4,21 @@
 // This file stores sensitive configuration data.
 
 return [
-    'JWT_SECRET' => 'ehub_v3_secure_p@ssw0rd_rand_2024_!#$%', // In production, use a 64+ char random string
+    'APP_ENV' => 'development', // 'development' or 'production'
+    'ALLOWED_ORIGINS' => [
+        'http://localhost:5173',
+        'http://localhost:5176',
+        'https://electrocom.com', // Updated production domain
+        'https://admin.electrocom.com'
+    ],
+    'DB_AUTO_REPAIR' => true, // Set to false in production for max performance
+    'JWT_SECRET' => 'ecom_v1_secure_p@ssw0rd_rand_2024_!#$%',
     'DB_HOST' => 'localhost:10017',
     'DB_USER' => 'root',
     'DB_PASS' => 'root',
     'DB_NAME' => 'local',
     'PAYSTACK_SECRET' => 'sk_test_ReplaceWithYourSecretKeyHere',
-    'PASSWORD_PEPPER' => 'ehub_v3_super_secret_pepper_2024_@#!', // Change this to a random string
+    'PASSWORD_PEPPER' => 'ecom_v1_super_secret_pepper_2024_@#!', // Change this to a random string
     'DATA_ENCRYPTION_KEY' => 'replace_with_32+_char_random_key', // used to encrypt Ghana card photos
     'GOV_API_URL' => 'https://example.gov/verify', // endpoint for Ghana card validation
     'GOV_API_KEY' => 'your-government-api-key',
@@ -34,7 +42,7 @@ return [
     'FRONTEND_URL' => 'http://localhost:5173',
 
     // --- notification services ---
-    'MAIL_FROM' => 'no-reply@essentialshub.com',
+    'MAIL_FROM' => 'no-reply@electrocom.com',
     'SMTP_HOST' => '', // e.g., smtp.gmail.com (Real SMTP requires an SMTP library like PHPMailer)
     'SMS_SID' => '',   // Twilio Account SID
     'SMS_TOKEN' => '', // Twilio Auth Token

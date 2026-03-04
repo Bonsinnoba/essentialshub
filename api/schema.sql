@@ -1,4 +1,4 @@
--- Database schema for Essentialshub
+-- Database schema for ElectroCom
 -- Tables will be created in the currently selected database ('local')
 
 

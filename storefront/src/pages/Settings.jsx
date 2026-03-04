@@ -175,7 +175,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
           <SettingRow 
             icon={Mail} 
             title="Email Address" 
-            description="primary@essentialshub.com" 
+            description="primary@electrocom.com" 
             action={<ActionButton label="Change" onClick={() => handleAction("Email Change", "A verification link has been sent to your new address.")} />} 
           />
           <SettingRow 

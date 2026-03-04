@@ -131,7 +131,7 @@ export default function Notifications({ searchQuery }) {
       }}>
         <div>
           <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-1px' }}>Notifications</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '4px' }}>See what's happening in your EssentialsHub world.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '4px' }}>See what's happening in your ElectroCom world.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', flex: 1, maxWidth: '500px', marginLeft: '24px' }}>
           <button 

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Save, User, Shield, Bell, Moon, Sun, Monitor, Globe, Check } from 'lucide-react';
 
 export default function Settings() {
-  const [storeName, setStoreName] = useState('EssentialsHub');
-  const [contactEmail, setContactEmail] = useState('admin@essentialshub.com');
+  const [storeName, setStoreName] = useState('ElectroCom');
+  const [contactEmail, setContactEmail] = useState('admin@electrocom.com');
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved !== null ? JSON.parse(saved) : false;

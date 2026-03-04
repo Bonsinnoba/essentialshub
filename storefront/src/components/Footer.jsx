@@ -9,7 +9,11 @@ export default function Footer() {
         <div className="footer-grid">
           {/* Company Info */}
           <div className="footer-column">
-            <h3 className="footer-title">EssentialsHub</h3>
+            <div className="footer-logo word-logo" style={{ marginBottom: '20px' }}>
+              <span className="word-logo-main">Electro</span>
+              <span className="word-logo-sub">Com</span>
+              <div className="logo-indicator"></div>
+            </div>
             <p className="footer-description">Your trusted destination for premium electronics and cutting-edge technology.</p>
             <div className="footer-social">
               <a href="#" className="social-link" data-tooltip="Facebook" data-tooltip-pos="top">
@@ -55,7 +59,7 @@ export default function Footer() {
             <ul className="footer-contact">
               <li>
                 <Mail size={16} />
-                <span>support@essentialshub.com</span>
+                <span>support@electrocom.com</span>
               </li>
               <li>
                 <Phone size={16} />
@@ -71,7 +75,7 @@ export default function Footer() {
 
         {/* Footer Bottom */}
         <div className="footer-bottom">
-          <p>&copy; 2026 EssentialsHub. All rights reserved.</p>
+          <p>&copy; 2026 ElectroCom. All rights reserved.</p>
           <div className="footer-bottom-links">
             <Link to="/privacy-policy">Privacy Policy</Link>
             <span>•</span>

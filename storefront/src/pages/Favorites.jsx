@@ -7,7 +7,7 @@ import { HeartOff, ShoppingBag, LogIn } from 'lucide-react';
 
 export default function Favorites({ onProductClick, searchQuery }) {
   const { wishlistItems, toggleWishlist } = useWishlist();
-  const { user } = useUser();
+  const { user, openAuthModal } = useUser();
   const navigate = useNavigate();
 
   if (!user) {
@@ -30,7 +30,7 @@ export default function Favorites({ onProductClick, searchQuery }) {
         <button 
           className="btn-primary" 
           style={{ marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          onClick={() => document.getElementById('btn-login')?.click()}
+          onClick={() => openAuthModal('signin')}
         >
           <LogIn size={18} />
           Login / Register

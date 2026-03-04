@@ -47,8 +47,26 @@ export const UserProvider = ({ children }) => {
     });
   };
 
+  const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'signin' });
+
+  const openAuthModal = (mode = 'signin') => {
+    setAuthModal({ isOpen: true, mode });
+  };
+
+  const closeAuthModal = () => {
+    setAuthModal(prev => ({ ...prev, isOpen: false }));
+  };
+
   return (
-    <UserContext.Provider value={{ user, updateUser, resetUser, logout }}>
+    <UserContext.Provider value={{ 
+      user, 
+      updateUser, 
+      resetUser, 
+      logout,
+      authModal,
+      openAuthModal,
+      closeAuthModal
+    }}>
       {children}
     </UserContext.Provider>
   );

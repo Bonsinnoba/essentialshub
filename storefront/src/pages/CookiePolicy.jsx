@@ -39,7 +39,7 @@ export default function CookiePolicy() {
 
         <section style={{ marginBottom: '40px' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
-            <Cookie size={24} className="text-primary" /> 2. How EssentialsHub Uses Cookies
+            <Cookie size={24} className="text-primary" /> 2. How ElectroCom Uses Cookies
           </h2>
           <p style={{ lineHeight: '1.8', color: 'var(--text-main)', opacity: 0.9 }}>
             When you use and access the Service, we may place a number of cookies files in your web browser. We use cookies for the following purposes:

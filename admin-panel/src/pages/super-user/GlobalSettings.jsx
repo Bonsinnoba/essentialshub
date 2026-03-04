@@ -8,8 +8,8 @@ import { fetchSuperSettings as getSettings, saveSuperSettings as saveSettings } 
 
 // ── Default settings (merged with any stored/API values) ──────────────────────
 const DEFAULTS = {
-  siteName:        'EssentialsHub',
-  siteEmail:       'admin@essentialshub.gh',
+  siteName:        'ElectroCom',
+  siteEmail:       'admin@electrocom.gh',
   maintenanceMode: false,
   allowRegistration: true,
   maxLoginAttempts: 5,

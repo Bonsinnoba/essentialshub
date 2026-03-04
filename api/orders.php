@@ -6,6 +6,42 @@ require_once 'security.php';
 
 header('Content-Type: application/json');
 
+// --- Self-healing Schema ---
+if ($config['DB_AUTO_REPAIR'] ?? false) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            total_amount DECIMAL(10, 2) NOT NULL,
+            status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+            shipping_address TEXT,
+            payment_method VARCHAR(50),
+            payment_reference VARCHAR(100),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS order_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            product_id INT,
+            quantity INT NOT NULL,
+            price_at_purchase DECIMAL(10, 2) NOT NULL,
+            selected_color VARCHAR(50),
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+        )");
+
+        $cols = $pdo->query("DESCRIBE orders")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('payment_reference', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN payment_reference VARCHAR(100) AFTER payment_method");
+        }
+    } catch (Exception $e) {
+        error_log("Orders schema self-healing failed: " . $e->getMessage());
+    }
+}
+
 // Authenticate User for all order operations
 $authenticatedUserId = authenticate();
 

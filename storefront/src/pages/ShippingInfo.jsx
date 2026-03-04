@@ -31,7 +31,7 @@ export default function ShippingInfo() {
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '12px' }}>Shipping Information</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '500px', margin: '0 auto' }}>
-          Everything you need to know about getting your EssentialsHub products delivered securely and on time.
+          Everything you need to know about getting your ElectroCom products delivered securely and on time.
         </p>
       </div>
 

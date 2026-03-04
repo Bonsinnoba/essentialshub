@@ -4,14 +4,14 @@
 
 
 
-# EssentialsHub Decoupled Project
+# ElectroCom Decoupled Project
 
 This project is structured as a decoupled application with a PHP backend and separate React frontends for customers and administrators.
 
 ## Project Structure
 
 ```
-/EssentialsHub-project
+/ElectroCom-project
   ├── /api            (PHP Backend API)
   ├── /storefront     (React Customer Application)
   └── /admin-panel    (React Admin Application)
@@ -48,7 +48,7 @@ This project uses Vite environment variables to manage the API connection.
 3. Ensure the `VITE_API_BASE_URL` variable correctly points to your backend.
 
 Example `.env` for local development:
-`VITE_API_BASE_URL=http://essentialshub.local/api`
+`VITE_API_BASE_URL=http://electrocom.local/api`
 
 ## Production Deployment & SPA Routing
 

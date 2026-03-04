@@ -70,7 +70,7 @@ export default function ProductManager() {
   const formatURL = (url) => {
     if (!url) return '';
     if (url.startsWith('http') || url.startsWith('data:')) return url;
-    const API_BASE = 'http://essentialshub.local/api/';
+    const API_BASE = 'http://electrocom.local/api/';
     return `${API_BASE}${url.startsWith('/') ? url.slice(1) : url}`;
   };
 
