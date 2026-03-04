@@ -65,7 +65,7 @@ try {
                 $tables[] = $row[0];
             }
 
-            $sqlDump = "-- EssentialsHub Database Backup\n";
+            $sqlDump = "-- ElectroCom Database Backup\n";
             $sqlDump .= "-- Date: " . date('Y-m-d H:i:s') . "\n\n";
             $sqlDump .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 

@@ -478,7 +478,7 @@ label {
     flex-direction: column;
     padding: 24px 0 0 0;
     overflow: hidden;
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     z-index: 1000;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -923,7 +923,7 @@ label {
 
 .dropdown-item:hover,
 .dropdown-item.active {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     padding-left: 18px;
 }
@@ -1174,7 +1174,7 @@ label {
 }
 
 .quantity-selector button:hover {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     border-color: var(--primary-blue);
 }
@@ -1391,7 +1391,7 @@ label {
 }
 
 .btn-add-cart {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     border: 1px solid transparent;
 }
@@ -1690,7 +1690,7 @@ label {
 }
 
 button.btn-login {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     padding: 0 16px;
     height: 36px;
@@ -1712,7 +1712,7 @@ button.btn-login:hover {
 }
 
 .btn-primary {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     padding: 12px 24px;
     border-radius: 12px;
@@ -1808,7 +1808,7 @@ button.btn-login:hover {
 }
 
 .btn-outline:hover {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     transform: translateY(-2px);
 }
@@ -2290,7 +2290,7 @@ button.btn-login:hover {
 }
 
 .step-dots .dot.active {
-    background: var(--primary-blue);
+    background: #3b82f6;
 }
 
 .dark-mode .step-dots .dot {
@@ -2298,7 +2298,7 @@ button.btn-login:hover {
 }
 
 .dark-mode .step-dots .dot.active {
-    background: var(--primary-blue);
+    background: #3b82f6;
 }
 
 .dark-mode .auth-modal select {
@@ -2407,7 +2407,7 @@ button.btn-login:hover {
     }
 
     .overlay {
-        background: var(--primary-blue);
+        background: #3b82f6;
         background: linear-gradient(to right, #1e40af, var(--primary-blue));
         background-repeat: no-repeat;
         background-size: cover;
@@ -2631,7 +2631,7 @@ button.btn-login:hover {
 
 .btn-login-submit {
     width: 100%;
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     padding: 14px;
     border-radius: 12px;
@@ -2874,7 +2874,7 @@ button.btn-login:hover {
 /* Custom Tooltip */
 #custom-tooltip {
     position: fixed;
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     padding: 6px 12px;
     border-radius: 6px;
@@ -3711,7 +3711,7 @@ button.btn-login:hover {
 }
 
 .filter-pill.active {
-    background: var(--primary-blue);
+    background: #3b82f6;
     color: white;
     border-color: var(--primary-blue);
     box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
@@ -3754,7 +3754,7 @@ button.btn-login:hover {
 }
 
 .dark-mode .filter-pill.active {
-    background: var(--primary-blue);
+    background: #3b82f6;
 }
 
 /* ========== App-Wide Responsive Overhaul ========== */
@@ -4446,7 +4446,7 @@ button.btn-login:hover {
     appearance: none;
     width: 18px;
     height: 18px;
-    background: var(--primary-blue);
+    background: #3b82f6;
     border: 3px solid #ffffff;
     border-radius: 50%;
     cursor: pointer;
@@ -4467,7 +4467,7 @@ button.btn-login:hover {
 .filter-range-slider::-moz-range-thumb {
     width: 18px;
     height: 18px;
-    background: var(--primary-blue);
+    background: #3b82f6;
     border: 3px solid #ffffff;
     border-radius: 50%;
     cursor: pointer;
@@ -4477,4 +4477,87 @@ button.btn-login:hover {
 
 .filter-range-slider::-webkit-slider-runnable-track {
     border-radius: 10px;
+}
+
+/* ========================================= */
+/*          PREMIUM WORD LOGO STYLES         */
+/* ========================================= */
+.word-logo {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 28px;
+    letter-spacing: -1.5px;
+    user-select: none;
+    cursor: pointer;
+    text-decoration: none !important;
+    line-height: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.word-logo:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.word-logo-main {
+    font-weight: 800;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+}
+
+.word-logo-sub {
+    font-weight: 500;
+    color: var(--text-main);
+    margin-left: 1px;
+    letter-spacing: -1px;
+}
+
+.footer-logo .word-logo-sub {
+    color: #ffffff;
+}
+
+.dark-mode .word-logo-sub {
+    color: #ffffff;
+}
+
+.logo-indicator {
+    width: 6px;
+    height: 6px;
+    background: #3b82f6;
+    border-radius: 50%;
+    margin-left: 4px;
+    margin-top: 6px;
+    position: relative;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.logo-indicator::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px solid #3b82f6;
+    border-radius: 50%;
+    animation: indicatorPulse 2s infinite;
+    opacity: 0;
+}
+
+@keyframes indicatorPulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
 }

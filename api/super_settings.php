@@ -31,8 +31,8 @@ if (!is_dir(__DIR__ . '/data')) {
 }
 
 $DEFAULTS = [
-    'siteName'          => 'EssentialsHub',
-    'siteEmail'         => 'admin@essentialshub.gh',
+    'siteName'          => 'ElectroCom',
+    'siteEmail'         => 'admin@electrocom.gh',
     'maintenanceMode'   => false,
     'allowRegistration' => true,
     'maxLoginAttempts'  => 5,

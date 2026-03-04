@@ -114,7 +114,7 @@ export default function MaintenancePage() {
           color: '#a78bfa', marginBottom: '24px'
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a78bfa', animation: 'dotBounce 2s ease-in-out infinite' }} />
-          EssentialsHub
+          ElectroCom
         </div>
 
         {/* Heading */}
@@ -159,8 +159,8 @@ export default function MaintenancePage() {
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '3px' }}>Need urgent help?</div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
               Email us at{' '}
-              <a href="mailto:support@essentialshub.com" style={{ color: '#a78bfa', fontWeight: 700, textDecoration: 'none' }}>
-                support@essentialshub.com
+              <a href="mailto:support@electrocom.com" style={{ color: '#a78bfa', fontWeight: 700, textDecoration: 'none' }}>
+                support@electrocom.com
               </a>
               {' '}and we'll respond right away.
             </div>

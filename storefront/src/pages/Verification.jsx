@@ -157,7 +157,7 @@ export default function Verification() {
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '12px' }}>Verify Identity</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '40px' }}>
-          Upload your Ghana Card to unlock full access to EssentialsHub, including checkout and premium support.
+          Upload your Ghana Card to unlock full access to ElectroCom, including checkout and premium support.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '24px' }}>

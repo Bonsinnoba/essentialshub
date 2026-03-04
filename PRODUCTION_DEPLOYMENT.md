@@ -1,150 +1,93 @@
-# Production Deployment Guide
+# ElectroCom Production Deployment Guide
 
-Before deploying EssentialsHub to a live production environment, there are critical manual steps you must take to ensure the security, stability, and performance of the application. 
-
-Follow this checklist carefully.
+This guide provides the necessary steps to deploy the **ElectroCom Decoupled Ecosystem** to a production environment. 
 
 ---
 
-## 1. Secrets and Environment Variables
+## 🏗️ 1. Infrastructure Requirements
 
-You must replace all default, placeholder, or "test" credentials with **strong, randomly generated secrets**.
-
-### Backend (`api/.env.php`)
-Open `api/.env.php` and update the following variables:
-- **`DB_PASS` & `DB_USER`**: Do not use `root` in production. Create a dedicated MySQL user with privileges only for the `essentialshub` database.
-- **`JWT_SECRET`**: Generate a strong 64+ character random string. If this is compromised, attackers can forge login sessions.
-- **`PASSWORD_PEPPER`**: Generate a strong random string. This adds additional security to hashed passwords. *(Note: Changing this later will invalidate all existing user passwords!)*
-- **`DATA_ENCRYPTION_KEY`**: Generate a 32+ character key. This is used to encrypt sensitive PII (like Ghana Card photos).
-- **`PAYSTACK_SECRET`**: Replace the `sk_test_...` key with your live production secret key from the Paystack dashboard.
-- **`FRONTEND_URL`**: Update this to the exact live domain of your storefront (e.g., `https://www.essentialshub.com`).
-- **Social Login Keys**: Fill in your Client IDs and Secrets for Google, Facebook, etc., and update the Redirect URIs to match your live backend domain.
-
-### Frontends (`.env.production`)
-For **each** of your React applications (`storefront`, `admin-panel`, and `super-user`):
-1. Create or edit the `.env.production` file.
-2. Set `VITE_API_BASE_URL` to point to your live PHP backend (e.g., `VITE_API_BASE_URL=https://api.essentialshub.com`).
+- **PHP 8.1+** with `pdo_mysql`, `openssl`, and `json` extensions.
+- **MySQL 8.0+** or MariaDB equivalent.
+- **Web Server**: Nginx (Recommended) or Apache.
+- **SSL Certificate**: Required for secure authentication and Ghana Card data transmission.
+- **Node.js**: Required only for building the frontend artifacts locally.
 
 ---
 
-## 2. Server & Web Server Security
+## 🔑 2. Backend Configuration (`api/.env.php`)
 
-### Restrict API Access (CORS)
-Currently, in your development environment, `api/cors_middleware.php` likely allows requests from any origin or `localhost`. 
-1. Open `api/cors_middleware.php`.
-2. Update the `Access-Control-Allow-Origin` headers to **explicitly allow only your exact frontend domains**. Never use `*` in production.
+Create a production `.env.php` file on your server. **DO NOT** use development keys.
 
-### Protect PHP Configuration (`php.ini`)
-1. Turn **OFF** error displaying to prevent leaking sensitive variables on crashes.
-   ```ini
-   display_errors = Off
-   log_errors = On
-   error_log = /var/log/php_errors.log
-   ```
-2. Increase your upload limits if necessary (for large gallery images or PDFs).
-   ```ini
-   upload_max_filesize = 10M
-   post_max_size = 12M
-   ```
+| Key | Production Requirement |
+|:---|:---|
+| `APP_ENV` | Must be set to `'production'`. |
+| `ALLOWED_ORIGINS` | List only your live `https` domains. |
+| `JWT_SECRET` | Generate a 64+ character random string. |
+| `PASSWORD_PEPPER` | Generate a unique random string (cannot be changed later without breaking logins). |
+| `DATA_ENCRYPTION_KEY` | **CRITICAL**: 32+ character key for Ghana Card PII encryption. |
+| `DB_NAME` | Rename to `electrocom` for brand consistency. |
+| `MAIL_FROM` | Set to `no-reply@electrocom.com`. |
 
-### Securing the Uploads Directory
-Your users will upload files to `api/uploads`. You **must** prevent attackers from uploading malicious `.php` scripts and executing them.
-1. Ensure the `uploads/` directory has proper write permissions (e.g., `chmod 755 uploads`).
-2. If using Apache, create an `.htaccess` file inside the `uploads/` folder:
-   ```apache
-   # Disallow PHP execution in this directory
-   <Files *.php>
-       SetHandler none
-       SetHandler default-handler
-       Options -ExecCGI
-       RemoveHandler .php
-   </Files>
-   ```
-3. If using Nginx, prevent PHP execution in the block:
-   ```nginx
-   location /uploads/ {
-       location ~ \.php$ {
-           deny all;
-       }
-   }
-   ```
-
-### Securing `.env.php`
-Ensure your web server (Nginx/Apache) is configured to deny all web requests directly to `.env.php` so your passwords cannot be downloaded from the browser. 
+> [!IMPORTANT]
+> Change the Super User password immediately after the first login in production.
 
 ---
 
-## 3. Database Hardening
+## 🌐 3. Frontend Configuration (`.env.production`)
 
-1. **Remove Remote Access**: Ensure your MySQL server is only bound to `localhost` (or the specific internal IP if the DB is on a separate server).
-2. **Setup Automated Backups**: Production databases crash. Setup a server cron job (e.g., using `mysqldump`) to back up your `products`, `orders`, and `users` tables daily to an external storage bucket.
-3. **Execute Setup Scripts and Delete Them**:
-   - If you use `create_admin.php` to bootstrap your first super admin account, **delete the file immediately after** running it. Leaving it on the server is an enormous security risk.
-   - Run any database migrations safely in a staging environment before doing it against production.
+Both the **Storefront** and **Admin Panel** rely on environment variables during the build process.
+
+1. Navigate to both `/storefront` and `/admin-panel`.
+2. Edit `.env.production`:
+   ```bash
+   VITE_API_BASE_URL=https://api.electrocom.com/api
+   ```
+3. Run the production build:
+   ```bash
+   npm run build
+   ```
+4. Upload the generated `dist/` folders to your production web server.
 
 ---
 
-## 4. Building the Frontends
+## 🛡️ 4. Server Security & Routing
 
-You cannot run `npm run dev` in production. You must compile the React code into optimized, static HTML/JS/CSS.
+### Nginx Configuration (SPA Routing)
+To prevent 404 errors on page refresh, redirect all non-file requests to `index.html`.
 
-For **each** frontend folder (`storefront`, `admin-panel`, `super-user`):
-1. Open a terminal in that directory.
-2. Run `npm install` to ensure dependencies are up to date.
-3. Run `npm run build`.
-4. This will generate a `dist/` folder. This folder contains your final website.
-
-Copy the contents of the `dist/` folders to your web server (e.g., `/var/www/storefront`, `/var/www/admin`).
-
-### SPA Routing (React Router)
-Because React handles page changes locally, refreshing a specific page (like `https://essentialshub.com/cart`) will result in a 404 error on a live server unless you configure fallback routing.
-
-**Nginx:**
 ```nginx
-location / {
-    try_files $uri $uri/ /index.html;
+server {
+    listen 443 ssl;
+    server_name electrocom.com;
+    root /var/www/electrocom/storefront/dist;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy or direct alias to PHP API
+    location /api {
+        alias /var/www/electrocom/api;
+        # Standard PHP-FPM configuration here...
+    }
 }
 ```
 
-**Apache:**
-Create an `.htaccess` inside the `dist/` folder:
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
-</IfModule>
-```
+### File System Permissions
+- **`/api/uploads`**: Must be writable by the web user (`www-data`).
+- **`/api/data`**: Must be writable for persisting global settings.
+- **`.env.php`**: Must be readable only by the web user, **never** publicly accessible.
 
 ---
 
-## 5. Enable HTTPS (SSL Certificates)
+## 🚀 5. Final Launch Checklist
 
-You **must** serve your API and frontends over HTTPS. 
-- Passing login passwords, JWT tokens, and Paystack payment tokens over plain HTTP is highly insecure and will trigger browser security warnings.
-- Use **Let's Encrypt** (Certbot) to easily provision free SSL certificates for your Nginx or Apache servers.
-
----
-
-## 6. Scheduled Tasks (Cron Jobs)
-
-If your backend relies on background maintenance operations (such as rotating slider images based on time via `check_slides_time.php`, parsing backend traffic logs, or database cleanup), you must set up Server Cron Jobs to trigger these PHP scripts periodically.
-
-Example Cron Job (runs every 15 minutes):
-```bash
-*/15 * * * * /usr/bin/php /var/www/api/check_slides_time.php > /dev/null 2>&1
-```
+- [ ] **SSL/TLS**: Verify that all traffic is forced to HTTPS.
+- [ ] **Diagnostic Cleanup**: Ensure no `check_*.php` or `test_*.php` scripts remain in the API directory.
+- [ ] **Database**: Run `api/schema.sql` to initialize the production tables.
+- [ ] **Brand Assets**: Verify that `logo.png` and favicons reflect the ElectroCom brand in `/public`.
+- [ ] **Third-Party**: Update Redirect URIs in Google/Facebook developer consoles to match your new production domain.
 
 ---
 
-## Final Review
-1. Are all default passwords and secrets changed?
-2. Is the API connected over HTTPS?
-3. Is your frontend pointing to the production API (not `localhost`)?
-4. Are you serving the React applications out of the `dist/` build folders?
-5. Did you delete or restrict developer scripts like `create_admin.php`?
-
-If yes, you are ready to launch EssentialsHub!
+*Last Updated: March 2026*

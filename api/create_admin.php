@@ -6,7 +6,7 @@ require 'security.php';
 requireRole('super', $pdo);
 
 $name = "Admin User";
-$email = "admin@essentialshub.com";
+$email = "admin@electrocom.com";
 $password = "admin123";
 $role = "admin";
 

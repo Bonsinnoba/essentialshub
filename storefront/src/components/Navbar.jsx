@@ -82,7 +82,7 @@ export default function Navbar({
       </div>
       
       <Link to="/" style={{ display: 'flex' }}>
-        <img src="/logo.png" className={`nav-logo ${isSearchOpen ? 'hidden-mobile' : ''}`} alt="EssentialsHub" />
+        <img src="/logo.png" className={`nav-logo ${isSearchOpen ? 'hidden-mobile' : ''}`} alt="ElectroCom" />
       </Link>
       
       <div ref={searchRef} className={`search-container ${isSearchOpen ? 'active' : ''}`}>
@@ -253,7 +253,7 @@ export default function Navbar({
               )}
             </div>
             <span className="navbar-user-name" style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-              {user.name?.split(' ')[0] || 'User'}
+              {user.name?.split(' ')?.[0] || 'User'}
             </span>
           </Link>
         ) : (

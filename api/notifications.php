@@ -19,7 +19,7 @@ class NotificationService
      */
     public function sendEmail($to, $subject, $message)
     {
-        $from = $this->config['MAIL_FROM'] ?? 'no-reply@essentialshub.com';
+        $from = $this->config['MAIL_FROM'] ?? 'no-reply@electrocom.com';
         $headers = "From: {$from}\r\n" .
             "Reply-To: {$from}\r\n" .
             "X-Mailer: PHP/" . phpversion();

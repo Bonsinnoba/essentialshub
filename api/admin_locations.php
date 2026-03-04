@@ -15,61 +15,63 @@ try {
 }
 
 // --- Self-healing Schema ---
-try {
-    // Ensure store_branches has a `type` column (headquarters vs warehouse)
-    $pdo->exec("CREATE TABLE IF NOT EXISTS store_branches (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        branch_code VARCHAR(50) UNIQUE,
-        address TEXT,
-        region VARCHAR(100),
-        type ENUM('headquarters', 'warehouse') DEFAULT 'warehouse',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
+if ($config['DB_AUTO_REPAIR'] ?? false) {
+    try {
+        // Ensure store_branches has a `type` column (headquarters vs warehouse)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS store_branches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            branch_code VARCHAR(50) UNIQUE,
+            address TEXT,
+            region VARCHAR(100),
+            type ENUM('headquarters', 'warehouse') DEFAULT 'warehouse',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
 
-    // Add type column if missing on older installs
-    $cols = $pdo->query("DESCRIBE store_branches")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('type', $cols)) {
-        $pdo->exec("ALTER TABLE store_branches ADD COLUMN type ENUM('headquarters','warehouse') DEFAULT 'warehouse' AFTER region");
-    }
-    if (!in_array('region', $cols)) {
-        $pdo->exec("ALTER TABLE store_branches ADD COLUMN region VARCHAR(100) AFTER address");
-    }
-    if (!in_array('status', $cols)) {
-        $pdo->exec("ALTER TABLE store_branches ADD COLUMN status ENUM('Online','Standby','Offline') DEFAULT 'Online'");
-    }
-    if (!in_array('load_level', $cols)) {
-        $pdo->exec("ALTER TABLE store_branches ADD COLUMN load_level INT DEFAULT 50");
-    }
+        // Add type column if missing on older installs
+        $cols = $pdo->query("DESCRIBE store_branches")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('type', $cols)) {
+            $pdo->exec("ALTER TABLE store_branches ADD COLUMN type ENUM('headquarters','warehouse') DEFAULT 'warehouse' AFTER region");
+        }
+        if (!in_array('region', $cols)) {
+            $pdo->exec("ALTER TABLE store_branches ADD COLUMN region VARCHAR(100) AFTER address");
+        }
+        if (!in_array('status', $cols)) {
+            $pdo->exec("ALTER TABLE store_branches ADD COLUMN status ENUM('Online','Standby','Offline') DEFAULT 'Online'");
+        }
+        if (!in_array('load_level', $cols)) {
+            $pdo->exec("ALTER TABLE store_branches ADD COLUMN load_level INT DEFAULT 50");
+        }
 
-    // Seed Accra as headquarters if table is empty
-    $count = $pdo->query("SELECT COUNT(*) FROM store_branches")->fetchColumn();
-    if ($count == 0) {
-        $pdo->exec("INSERT INTO store_branches (name, branch_code, address, region, type) VALUES
-            ('Accra (Headquarters)', 'ACC-HQ', 'Spintex Road, Accra', 'Greater Accra', 'headquarters'),
-            ('Kumasi Warehouse', 'KMS-01', 'Adum, Kumasi', 'Ashanti', 'warehouse'),
-            ('Wa Warehouse', 'WA-01', 'Main Market, Wa', 'Upper West', 'warehouse')");
-    } else {
-        // Ensure existing Accra record is marked as headquarters
-        $pdo->exec("UPDATE store_branches SET type = 'headquarters' WHERE branch_code = 'ACC-HQ' OR (LOWER(name) LIKE '%accra%' AND type != 'headquarters') LIMIT 1");
-    }
+        // Seed Accra as headquarters if table is empty
+        $count = $pdo->query("SELECT COUNT(*) FROM store_branches")->fetchColumn();
+        if ($count == 0) {
+            $pdo->exec("INSERT INTO store_branches (name, branch_code, address, region, type) VALUES
+                ('Accra (Headquarters)', 'ACC-HQ', 'Spintex Road, Accra', 'Greater Accra', 'headquarters'),
+                ('Kumasi Warehouse', 'KMS-01', 'Adum, Kumasi', 'Ashanti', 'warehouse'),
+                ('Wa Warehouse', 'WA-01', 'Main Market, Wa', 'Upper West', 'warehouse')");
+        } else {
+            // Ensure existing Accra record is marked as headquarters
+            $pdo->exec("UPDATE store_branches SET type = 'headquarters' WHERE branch_code = 'ACC-HQ' OR (LOWER(name) LIKE '%accra%' AND type != 'headquarters') LIMIT 1");
+        }
 
-    // Warehouse dispatches table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS warehouse_dispatches (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        warehouse_id INT NOT NULL,
-        product_id INT NOT NULL,
-        quantity INT NOT NULL DEFAULT 1,
-        notes TEXT,
-        status ENUM('pending', 'delivered', 'returned', 'undelivered') DEFAULT 'pending',
-        dispatched_by INT NOT NULL,
-        dispatched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (warehouse_id) REFERENCES store_branches(id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-    )");
-} catch (Exception $e) {
-    error_log("Warehouse schema migration failed: " . $e->getMessage());
+        // Warehouse dispatches table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS warehouse_dispatches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            warehouse_id INT NOT NULL,
+            product_id INT NOT NULL,
+            quantity INT NOT NULL DEFAULT 1,
+            notes TEXT,
+            status ENUM('pending', 'delivered', 'returned', 'undelivered') DEFAULT 'pending',
+            dispatched_by INT NOT NULL,
+            dispatched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (warehouse_id) REFERENCES store_branches(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )");
+    } catch (Exception $e) {
+        error_log("Warehouse schema migration failed: " . $e->getMessage());
+    }
 }
 
 $method = $_SERVER['REQUEST_METHOD'];

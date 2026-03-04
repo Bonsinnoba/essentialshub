@@ -40,7 +40,7 @@ try {
     }
 
     $needsRehash = false;
-    if (!$user /* || !verifyPassword($password, $user['password_hash'], $needsRehash) */) { // Bypassed for local dev
+    if (!$user || !verifyPassword($password, $user['password_hash'], $needsRehash)) {
         // 2. Handle Failed Attempt
         if ($user) {
             $attempts = ($user['login_attempts'] ?? 0) + 1;
@@ -86,7 +86,7 @@ try {
         // Dispatch new code
         require_once 'notifications.php';
         $notifier = new NotificationService();
-        $subject = "Your EssentialsHub Verification Code";
+        $subject = "Your ElectroCom Verification Code";
         $msg = "Your verification code is: {$newCode}. Please enter this code to activate your account.";
 
         if ($user['verification_method'] === 'sms') {

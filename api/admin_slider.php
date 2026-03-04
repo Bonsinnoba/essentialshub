@@ -19,31 +19,33 @@ try {
 }
 
 // Self-healing: Ensure table and columns exist
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS slider_images (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        image_url LONGTEXT NOT NULL,
-        title VARCHAR(255),
-        subtitle VARCHAR(255),
-        button_text VARCHAR(50),
-        button_link VARCHAR(255),
-        text_position VARCHAR(20) DEFAULT 'left',
-        content_blocks LONGTEXT,
-        display_order INT DEFAULT 0,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
+if ($config['DB_AUTO_REPAIR'] ?? false) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS slider_images (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            image_url LONGTEXT NOT NULL,
+            title VARCHAR(255),
+            subtitle VARCHAR(255),
+            button_text VARCHAR(50),
+            button_link VARCHAR(255),
+            text_position VARCHAR(20) DEFAULT 'left',
+            content_blocks LONGTEXT,
+            display_order INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
 
-    $columns = $pdo->query("DESCRIBE slider_images")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('text_position', $columns)) {
-        $pdo->exec("ALTER TABLE slider_images ADD COLUMN text_position VARCHAR(20) DEFAULT 'left' AFTER button_link");
+        $columns = $pdo->query("DESCRIBE slider_images")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('text_position', $columns)) {
+            $pdo->exec("ALTER TABLE slider_images ADD COLUMN text_position VARCHAR(20) DEFAULT 'left' AFTER button_link");
+        }
+        if (!in_array('content_blocks', $columns)) {
+            $pdo->exec("ALTER TABLE slider_images ADD COLUMN content_blocks LONGTEXT AFTER text_position");
+        }
+        $pdo->exec("ALTER TABLE slider_images MODIFY COLUMN image_url LONGTEXT NOT NULL");
+    } catch (Exception $e) {
+        // Silently continue if possible, or handle error
     }
-    if (!in_array('content_blocks', $columns)) {
-        $pdo->exec("ALTER TABLE slider_images ADD COLUMN content_blocks LONGTEXT AFTER text_position");
-    }
-    $pdo->exec("ALTER TABLE slider_images MODIFY COLUMN image_url LONGTEXT NOT NULL");
-} catch (Exception $e) {
-    // Silently continue if possible, or handle error
 }
 
 /**

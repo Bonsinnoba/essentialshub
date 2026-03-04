@@ -8,6 +8,7 @@ import AuthModal from './components/AuthModal'
 import Footer from './components/Footer'
 import Drawer from './components/Drawer'
 import { X } from 'lucide-react'
+import { secureStorage } from './utils/secureStorage';
 
 import { initialProducts } from './constants'; // Keep for structure but unused
 import { CartProvider, useCart } from './context/CartContext';
@@ -55,10 +56,9 @@ const ScrollToTop = () => {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState('signin');
-  const [loginMessage, setLoginMessage] = useState('');
+  const { user, logout, authModal, openAuthModal, closeAuthModal } = useUser();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [loginMessage, setLoginMessage] = useState('');
 
   // Check maintenance mode from backend
   useEffect(() => {
@@ -73,8 +73,8 @@ function AppContent() {
           const data = await res.json();
           // Even if 503, Super Admins should bypass
           if (data.maintenance === true) {
-            const user = JSON.parse(localStorage.getItem('ehub_user') || '{}');
-            if (user.role === 'super') {
+            const ehub_user = secureStorage.getItem('user', 'shared') || {};
+            if (ehub_user.role === 'super') {
               setIsMaintenanceMode(false);
             } else {
               setIsMaintenanceMode(true);
@@ -94,8 +94,7 @@ function AppContent() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('social_error') || params.get('social_token')) {
-       setAuthInitialMode('signin');
-       setIsLoginOpen(true);
+       openAuthModal('signin');
     }
   }, []);
 
@@ -103,10 +102,6 @@ function AppContent() {
   // if (isMaintenanceMode) return <MaintenancePage />;
 
 
-  const openAuth = (mode = 'signin') => {
-    setAuthInitialMode(mode);
-    setIsLoginOpen(true);
-  };
   const [redirectPath, setRedirectPath] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -122,7 +117,6 @@ function AppContent() {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addNotification, notifications, deleteNotification } = useNotifications();
-  const { user, logout } = useUser();
   const maintenanceRef = useRef(isMaintenanceMode);
 
   useEffect(() => {
@@ -278,15 +272,23 @@ function AppContent() {
        setLoginMessage('Please login to access this page');
        
        navigate('/');
-       openAuth('signin');
+       openAuthModal('signin');
        addNotification('Please login to access this page', 'info');
     }
   }, [location.pathname, user, navigate]);
 
+  // Handle navigation after successful login
+  useEffect(() => {
+    if (user && redirectPath) {
+      navigate(redirectPath);
+      setRedirectPath(null);
+    }
+  }, [user, redirectPath, navigate]);
+
   const handleAddToCart = (product, qty, color) => {
     if (!user) {
         setLoginMessage('Please login to add items to cart');
-        openAuth('signin');
+        openAuthModal('signin');
         addNotification('Please login to add items to cart', 'info');
         return;
     }
@@ -297,7 +299,7 @@ function AppContent() {
   const handleAddToWishlist = (product) => {
     if (!user) {
         setLoginMessage('Please login to manage your wishlist');
-        openAuth('signin');
+        openAuthModal('signin');
         addNotification('Please login to use wishlist', 'info');
         return;
     }
@@ -323,7 +325,7 @@ function AppContent() {
       
       <div className="main-wrapper">
         <Navbar 
-          onLoginClick={() => openAuth('signin')} 
+          onLoginClick={() => openAuthModal('signin')} 
           onMapClick={() => setActiveDrawer('map')}
           onMenuClick={toggleSidebar}
           onThemeToggle={toggleDarkMode}
@@ -373,16 +375,11 @@ function AppContent() {
       />
 
       <AuthModal 
-        isOpen={isLoginOpen} 
-        initialMode={authInitialMode}
+        isOpen={authModal.isOpen} 
+        initialMode={authModal.mode}
         onClose={() => {
-            setIsLoginOpen(false);
+            closeAuthModal();
             setLoginMessage('');
-            // If user just logged in and we have a redirect path
-            if (user && redirectPath) {
-                navigate(redirectPath);
-                setRedirectPath(null);
-            }
         }} 
       />
 
@@ -467,11 +464,11 @@ const AppProviders = ({ children }) => {
   // Using user?.id as a key ensures that all nested providers (Notifications, Cart, etc.) 
   // fully remount and reset their internal states when the user changes or logs out.
   return (
-    <NotificationProvider key={`notif-${user?.id || 'guest'}`}>
+    <NotificationProvider>
       <SettingsProvider>
-        <WishlistProvider key={`wish-${user?.id || 'guest'}`}>
-          <CartProvider key={`cart-${user?.id || 'guest'}`}>
-            <WalletProvider key={`wallet-${user?.id || 'guest'}`}>
+        <WishlistProvider>
+          <CartProvider>
+            <WalletProvider>
               {children}
             </WalletProvider>
           </CartProvider>

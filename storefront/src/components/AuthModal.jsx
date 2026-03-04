@@ -193,7 +193,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
         } else {
           // Direct login
           updateUser(response.data.user);
-          localStorage.setItem('ehub_user', JSON.stringify(response.data.user));
           onClose(response.data.user);
           setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email', id_number: '', id_photo: '' });
         }

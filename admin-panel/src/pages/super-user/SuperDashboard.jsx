@@ -102,7 +102,7 @@ export default function Dashboard() {
       <header style={{ marginBottom: '36px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '34px', fontWeight: 900, letterSpacing: '-1px', marginBottom: '6px' }}>Global Performance</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Real-time data across all EssentialsHub branches.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Real-time data across all ElectroCom branches.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
           <button onClick={load} disabled={loading} className="btn-primary" style={{ display:'flex', alignItems:'center', gap:'7px', padding:'10px 20px', fontSize:'13px' }}>

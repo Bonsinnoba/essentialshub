@@ -31,22 +31,29 @@ export const secureStorage = {
      * Set a value in storage, scoped specifically to the current user.
      */
     setItem: (key, value, userId = 'guest') => {
-        const fullKey = `${APP_PREFIX}_${key}_${userId}`;
-        const stringValue = JSON.stringify(value);
-        localStorage.setItem(fullKey, obfuscate(stringValue));
+        try {
+            const id = userId || 'guest';
+            const fullKey = `${APP_PREFIX}_${key}_${id}`;
+            const stringValue = JSON.stringify(value);
+            localStorage.setItem(fullKey, obfuscate(stringValue));
+        } catch (e) {
+            console.error(`Failed to set secure storage for ${key}`, e);
+            // Non-critical: allow app to continue even if storage fails
+        }
     },
 
     /**
      * Get a value from storage for the current user.
      */
     getItem: (key, userId = 'guest') => {
-        const fullKey = `${APP_PREFIX}_${key}_${userId}`;
-        const saved = localStorage.getItem(fullKey);
-        if (!saved) return null;
         try {
+            const id = userId || 'guest';
+            const fullKey = `${APP_PREFIX}_${key}_${id}`;
+            const saved = localStorage.getItem(fullKey);
+            if (!saved) return null;
             return JSON.parse(deobfuscate(saved));
         } catch (e) {
-            console.error(`Failed to parse secure storage for ${key}`, e);
+            console.warn(`Failed to parse secure storage for ${key}`, e);
             return null;
         }
     },
@@ -55,19 +62,27 @@ export const secureStorage = {
      * Remove a specific key for the user.
      */
     removeItem: (key, userId = 'guest') => {
-        const fullKey = `${APP_PREFIX}_${key}_${userId}`;
-        localStorage.removeItem(fullKey);
+        try {
+            const id = userId || 'guest';
+            const fullKey = `${APP_PREFIX}_${key}_${id}`;
+            localStorage.removeItem(fullKey);
+        } catch (e) {
+            console.error(`Failed to remove secure storage for ${key}`, e);
+        }
     },
 
     /**
      * Clear generic app data (not recommended unless full reset).
      */
     clear: () => {
-        // We only clear keys starting with our prefix to avoid touching other app data
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith(APP_PREFIX)) {
-                localStorage.removeItem(key);
-            }
-        });
+        try {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith(APP_PREFIX)) {
+                    localStorage.removeItem(key);
+                }
+            });
+        } catch (e) {
+            console.error('Failed to clear secure storage', e);
+        }
     }
 };

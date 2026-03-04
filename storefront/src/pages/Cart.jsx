@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Heart, X, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Heart, X, AlertCircle, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 export default function Cart() {
+  const { user, openAuthModal } = useUser();
   const { cartItems, removeFromCart, updateQuantity, subtotal } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addNotification } = useNotifications();
@@ -35,6 +37,35 @@ export default function Cart() {
     addNotification(`${confirmDelete.name} removed from cart`, 'info');
     setConfirmDelete(null);
   };
+
+  if (!user) {
+    return (
+      <div className="card glass animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 32px', textAlign: 'center' }}>
+        <div className="glass" style={{ 
+          width: '80px', 
+          height: '80px', 
+          borderRadius: '50%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          marginBottom: '24px',
+          color: 'var(--primary-blue)'
+        }}>
+          <LogIn size={40} strokeWidth={1.5} />
+        </div>
+        <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>Log in to view cart</h2>
+        <p style={{ fontSize: '15px', maxWidth: '300px', lineHeight: '1.6', color: 'var(--text-muted)' }}>Sign in to see your saved items and proceed to checkout.</p>
+        <button 
+          className="btn-primary" 
+          style={{ marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          onClick={() => openAuthModal('signin')}
+        >
+          <LogIn size={18} />
+          Login / Register
+        </button>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (

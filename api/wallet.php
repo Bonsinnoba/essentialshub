@@ -6,6 +6,26 @@ require_once 'cors_middleware.php';
 header('Content-Type: application/json');
 
 try {
+    // --- Self-healing Schema ---
+    if ($config['DB_AUTO_REPAIR'] ?? false) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS wallet_transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                type ENUM('credit', 'debit') NOT NULL,
+                reference VARCHAR(100),
+                title VARCHAR(255),
+                details TEXT,
+                status ENUM('completed', 'pending', 'failed') DEFAULT 'completed',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )");
+        } catch (Exception $e) {
+            error_log("Wallet schema self-healing failed: " . $e->getMessage());
+        }
+    }
+
     // 1. Authenticate User
     $userId = authenticate();
 

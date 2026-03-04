@@ -214,7 +214,7 @@ export default function SystemLogs() {
             {/* Terminal top bar */}
             <div style={{ padding: '12px 20px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {['#ef4444','#f59e0b','#22c55e'].map(c => <div key={c} style={{ width: '12px', height: '12px', borderRadius: '50%', background: c }} />)}
-              <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>essentialshub-core — system.log</span>
+              <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>electrocom-core — system.log</span>
             </div>
 
             {loading ? (
@@ -299,7 +299,7 @@ export default function SystemLogs() {
                             <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                     <a 
-                                      href={`http://essentialshub.local/api/super_backup.php?action=download&file=${b.name}&token=${localStorage.getItem('ehub_token')}`}
+                                      href={`http://electrocom.local/api/super_backup.php?action=download&file=${b.name}&token=${localStorage.getItem('ehub_token')}`}
                                       target="_blank"
                                       rel="noreferrer"
                                       style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}

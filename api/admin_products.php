@@ -15,61 +15,63 @@ try {
 }
 
 // Self-healing: Ensure table and columns exist
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS products (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10, 2) NOT NULL,
-        category VARCHAR(100),
-        image_url VARCHAR(255),
-        stock_quantity INT DEFAULT 0,
-        colors JSON,
-        specs JSON,
-        included JSON,
-        directions TEXT,
-        product_code VARCHAR(100),
-        location VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
+if ($config['DB_AUTO_REPAIR'] ?? false) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            price DECIMAL(10, 2) NOT NULL,
+            category VARCHAR(100),
+            image_url VARCHAR(255),
+            stock_quantity INT DEFAULT 0,
+            colors JSON,
+            specs JSON,
+            included JSON,
+            directions TEXT,
+            product_code VARCHAR(100),
+            location VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
 
-    $columns = $pdo->query("DESCRIBE products")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('directions', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN directions TEXT AFTER included");
-    }
-    if (!in_array('included', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN included JSON AFTER specs");
-    }
-    if (!in_array('rating', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN rating DECIMAL(2, 1) DEFAULT 0.0 AFTER directions");
-    }
-    if (!in_array('gallery', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN gallery JSON AFTER rating");
-    }
-    if (!in_array('product_code', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN product_code VARCHAR(100) AFTER directions");
-    }
-    if (!in_array('location', $columns)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN location VARCHAR(255) AFTER product_code");
-    }
-
-    // Performance Indexing
-    $indexes = $pdo->query("SHOW INDEX FROM products")->fetchAll(PDO::FETCH_ASSOC);
-    $hasCategoryIndex = false;
-    foreach ($indexes as $index) {
-        if ($index['Key_name'] === 'idx_product_category') {
-            $hasCategoryIndex = true;
-            break;
+        $columns = $pdo->query("DESCRIBE products")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('directions', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN directions TEXT AFTER included");
         }
-    }
-    if (!$hasCategoryIndex) {
-        $pdo->exec("CREATE INDEX idx_product_category ON products(category)");
-    }
+        if (!in_array('included', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN included JSON AFTER specs");
+        }
+        if (!in_array('rating', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN rating DECIMAL(2, 1) DEFAULT 0.0 AFTER directions");
+        }
+        if (!in_array('gallery', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN gallery JSON AFTER rating");
+        }
+        if (!in_array('product_code', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN product_code VARCHAR(100) AFTER directions");
+        }
+        if (!in_array('location', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN location VARCHAR(255) AFTER product_code");
+        }
 
-    // Patch for products with 0.0 rating (seed data fix)
-    $pdo->exec("UPDATE products SET rating = 4.5 WHERE rating = 0.0 OR rating IS NULL");
-} catch (Exception $e) {
-    error_log("Database schema check failed: " . $e->getMessage());
+        // Performance Indexing
+        $indexes = $pdo->query("SHOW INDEX FROM products")->fetchAll(PDO::FETCH_ASSOC);
+        $hasCategoryIndex = false;
+        foreach ($indexes as $index) {
+            if ($index['Key_name'] === 'idx_product_category') {
+                $hasCategoryIndex = true;
+                break;
+            }
+        }
+        if (!$hasCategoryIndex) {
+            $pdo->exec("CREATE INDEX idx_product_category ON products(category)");
+        }
+
+        // Patch for products with 0.0 rating (seed data fix)
+        $pdo->exec("UPDATE products SET rating = 4.5 WHERE rating = 0.0 OR rating IS NULL");
+    } catch (Exception $e) {
+        error_log("Database schema check failed: " . $e->getMessage());
+    }
 }
 
 $method = $_SERVER['REQUEST_METHOD'];

@@ -2,6 +2,31 @@
 // api/traffic_monitor.php
 require_once 'db.php';
 
+// --- Self-healing Schema ---
+if ($config['DB_AUTO_REPAIR'] ?? false) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS traffic_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip_address VARCHAR(45) NOT NULL,
+            country VARCHAR(100),
+            request_url TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS access_restrictions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            type ENUM('ip', 'country') NOT NULL,
+            value VARCHAR(255) NOT NULL,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY idx_restriction (type, value)
+        )");
+    } catch (Exception $e) {
+        error_log("Traffic monitor schema self-healing failed: " . $e->getMessage());
+    }
+}
+
 function monitorTraffic()
 {
     global $pdo;

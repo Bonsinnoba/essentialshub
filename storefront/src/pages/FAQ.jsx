@@ -23,7 +23,7 @@ export default function FAQ() {
     },
     {
       q: "How do I contact customer support?",
-      a: "You can reach out via the 'Support' tab in your user dashboard, email us directly at support@essentialshub.com, or use the live chat widget available during business hours."
+      a: "You can reach out via the 'Support' tab in your user dashboard, email us directly at support@electrocom.com, or use the live chat widget available during business hours."
     }
   ];
 
@@ -36,7 +36,7 @@ export default function FAQ() {
          </div>
         <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '12px' }}>Frequently Asked Questions</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '600px', margin: '0 auto' }}>
-          Find quick answers to the most common questions regarding your EssentialsHub experience.
+          Find quick answers to the most common questions regarding your ElectroCom experience.
         </p>
       </div>
 

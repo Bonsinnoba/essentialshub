@@ -1,9 +1,9 @@
-# EssentialsHub Backend
+# ElectroCom Backend
 
 ## Setup Instructions
 
 1.  **Database Setup**:
-    *   Create a MySQL database named `essentialshub`.
+    *   Create a MySQL database named `electrocom`.
     *   Import the `schema.sql` file into your database (e.g., using phpMyAdmin or MySQL Workbench).
     *   **If you are updating an existing installation**, run the following SQL to add the new columns for Ghana card verification:
 
@@ -30,9 +30,9 @@
 3.  **Running the Server**:
     *   Ensure your PHP server (XAMPP, WAMP, or built-in) is running.
     *   The API endpoints will be accessible at:
-        *   `http://localhost/essentialshub/backend/products.php`
-        *   `http://localhost/essentialshub/backend/auth.php`
-        *   `http://localhost/essentialshub/backend/orders.php`
+        *   `http://localhost/electrocom/backend/products.php`
+        *   `http://localhost/electrocom/backend/auth.php`
+        *   `http://localhost/electrocom/backend/orders.php`
     *   *Note: The exact URL depends on your server configuration and where you placed the project folder.*
 
 ## API Endpoints
