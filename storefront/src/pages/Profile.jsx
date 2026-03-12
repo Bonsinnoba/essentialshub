@@ -86,9 +86,7 @@ export default function Profile() {
     <div className="profile-page" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      gap: '32px', 
-      padding: '0 16px 48px',
-      width: '100%'
+      gap: '24px'
     }}>
       <div className="page-header" style={{ 
         display: 'flex', 

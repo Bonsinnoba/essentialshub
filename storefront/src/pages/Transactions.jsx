@@ -12,12 +12,12 @@ export default function Transactions() {
     <div className="transactions-page" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      gap: '32px', 
-      padding: '0 16px 48px',
-      width: '100%'
+      gap: '24px',
+      width: '100%',
+      maxWidth: '100%'
     }}>
-      <div className="page-header" style={{ padding: '24px 0 8px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="page-header" style={{ padding: '24px 0 8px', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Receipt size={32} className="text-blue" />
           Transactions
         </h1>
@@ -25,7 +25,7 @@ export default function Transactions() {
       </div>
 
       {/* Row 1: Transaction History - Moved to top as it's now primary */}
-      <div className="card glass" style={{ padding: '24px' }}>
+      <div className="card glass" style={{ padding: '24px 16px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 0 }}>
             <History size={20} /> Transaction History
@@ -75,14 +75,16 @@ export default function Transactions() {
       </div>
 
       {/* Row 2: Payment Methods */}
-      <div className="card glass" style={{ padding: '24px' }}>
+      <div className="card glass" style={{ padding: '24px 16px', width: '100%', boxSizing: 'border-box' }}>
         <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
           <CreditCard size={20} /> Saved Payment Methods
         </div>
         <div className="payment-methods-grid" style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '24px' 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: '24px',
+            width: '100%',
+            boxSizing: 'border-box'
         }}>
           {paymentMethods.length > 0 ? paymentMethods.map(method => (
             <div key={method.id} style={{ 

@@ -26,7 +26,7 @@ export default function Returns() {
   ];
 
   return (
-    <div className="returns-page" style={{ padding: '60px 20px', maxWidth: '800px', margin: '0 auto', minHeight: '80vh' }}>
+    <div className="returns-page" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
          <div style={{ background: 'var(--danger-bg)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', margin: '0 auto 20px auto' }}>

@@ -83,7 +83,7 @@ export default function CMSPage() {
   });
 
   return (
-    <div className="container animate-fade-in" style={{ padding: '48px 20px', minHeight: '70vh' }}>
+    <div className="container animate-fade-in" style={{ minHeight: '70vh', display: 'flex', flexDirection: 'column', gap: '24px' }}>
        <div className="card glass" style={{ maxWidth: '900px', margin: '0 auto', padding: '0', overflow: 'hidden' }}>
             
             {/* Page Header */}

@@ -90,16 +90,18 @@ export default function Orders({ searchQuery }) {
 
     return (
     <div className="order-item-card glass" style={{ 
-      padding: '28px', 
+      padding: '28px 16px', 
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: 'column',
+      gap: '20px',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
       cursor: 'default',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
           <div style={{ background: 'var(--info-bg)', padding: '10px', borderRadius: '12px', color: 'var(--primary-blue)' }}>
             <Package size={20} />
@@ -118,7 +120,7 @@ export default function Orders({ searchQuery }) {
           <div style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '15px', marginBottom: '8px' }}>
             {order.items ? order.items : `Order #${order.id}`}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
             <div style={{ fontSize: '16px', fontWeight: 700 }}>
               <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '14px' }}>Total Amount:</span> {formatPrice(parseFloat(order.total_amount || 0))}
             </div>
@@ -131,7 +133,7 @@ export default function Orders({ searchQuery }) {
         </div>
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', minWidth: '150px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px', width: '100%' }}>
         <StatusBadge status={order.status} />
         <button 
           onClick={() => openTracking(order.id)}
@@ -191,13 +193,7 @@ export default function Orders({ searchQuery }) {
   if (!user) return <div style={{ padding: '40px', textAlign: 'center' }}>Please log in to view orders.</div>;
 
   return (
-    <div className="orders-page" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: '40px', 
-      padding: '0 16px 48px',
-      width: '100%'
-    }}>
+    <div className="orders-page" style={{ width: '100%', maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="page-header" style={{ padding: '24px 0 8px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-1px' }}>Orders</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '4px' }}>Track shipment progress and view your past purchase history.</p>

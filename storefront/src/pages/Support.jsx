@@ -77,9 +77,7 @@ export default function Support({ searchQuery = '' }) {
     <div className="support-page" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      gap: '40px', 
-      padding: '0 16px 48px',
-      width: '100%'
+      gap: '24px'
     }}>
       <div className="page-header" style={{ 
         display: 'flex', 

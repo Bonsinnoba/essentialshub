@@ -26,7 +26,7 @@ export default function ShippingInfo() {
   ];
 
   return (
-    <div className="shipping-page" style={{ padding: '60px 20px', maxWidth: '800px', margin: '0 auto', minHeight: '80vh' }}>
+    <div className="shipping-page" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '12px' }}>Shipping Information</h1>

@@ -6,6 +6,7 @@ import { Filter as FilterIcon } from 'lucide-react';
 
 export default function Shop({ products, onProductClick, searchQuery, loading }) {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   // Dynamically extract categories from the product list
   const availableCategories = useMemo(() => {
     const cats = new Set(products.map(p => (p.category || 'Uncategorized')));
@@ -46,7 +47,6 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
       const matchCategory = filters.category === 'All' || 
                             category === filters.category.toLowerCase();
       
-      // Convert price to number safely, stripping any non-numeric characters if needed
       const rawPrice = String(p.price || '0').replace(/[^0-9.]/g, '');
       const itemPrice = parseFloat(rawPrice) || 0;
       const matchPrice = itemPrice <= (Number(filters.maxPrice) || Infinity);
@@ -70,8 +70,7 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
     <div className="shop-container" style={{ 
       display: 'grid', 
       gridTemplateColumns: '280px 1fr', 
-      gap: '32px',
-      padding: '24px 0'
+      gap: '24px'
     }}>
       {/* Desktop Filter Sidebar */}
       <aside className="desktop-filters card glass" style={{ height: 'fit-content', position: 'sticky', top: '24px' }}>
@@ -91,7 +90,7 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
           justifyContent: 'space-between', 
           alignItems: 'center', 
           padding: '12px max(20px, env(safe-area-inset-left))',
-          margin: '16px -4px 24px -4px',
+          margin: '16px 0 24px 0',
           borderRadius: '16px',
           background: 'var(--bg-surface)',
           borderBottom: '1px solid var(--border-light)',
@@ -174,6 +173,8 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
                   }}
                 >
                   <ProductCard 
+                    key={p.id}
+                    id={p.id}
                     name={p.name} 
                     price={p.price} 
                     image={p.image} 
