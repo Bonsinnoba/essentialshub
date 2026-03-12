@@ -4,10 +4,9 @@ import { Cookie, Info, Settings, MousePointerClick } from 'lucide-react';
 export default function CookiePolicy() {
   return (
     <div className="cookie-policy-page" style={{ 
-      padding: '40px 16px', 
-      maxWidth: '1000px', 
-      margin: '0 auto',
-      color: 'var(--text-main)'
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <div style={{ 

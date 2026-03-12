@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ElectroCom Storefront — Redesign Wireframe</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+    background: #f5f5f5;
+    color: #333;
+    font-size: 13px;
+  }
+
+  /* ---------- legend ---------- */
+  .legend {
+    position: fixed;
+    top: 12px; right: 12px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 180px;
+  }
+  .legend h4 { font-size: 11px; margin-bottom: 6px; color: #333; }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .dot-reuse { background: #4CAF50; }
+  .dot-new   { background: #FF9800; }
+  .dot-info  { background: #2196F3; }
+
+  /* ---------- badge ---------- */
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    position: absolute;
+    top: -8px; right: -4px;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .badge-reuse { background: #4CAF50; }
+  .badge-new   { background: #FF9800; }
+  .badge-fix   { background: #F44336; }
+  .rel { position: relative; display: inline-block; }
+
+  /* ---------- page chrome ---------- */
+  .page { display: flex; min-height: 100vh; background: #fff; border: 2px solid #ccc; margin: 20px; border-radius: 4px; overflow: hidden; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    width: 72px;
+    background: #e0e0e0;
+    border-right: 2px solid #bbb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .sidebar-icon {
+    width: 44px; height: 44px;
+    border: 2px solid #bbb;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: #f5f5f5;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .sidebar-icon.active {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+  }
+  .sidebar-spacer { flex: 1; }
+
+  /* ---------- main ---------- */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ---------- top nav ---------- */
+  .topnav {
+    height: 68px;
+    border-bottom: 2px solid #ccc;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    background: #fafafa;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-box {
+    height: 36px; width: 120px;
+    background: #e0e0e0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; color: #666;
+    flex-shrink: 0;
+  }
+
+  /* FIX: Search field accessible */
+  .search-wrap {
+    flex: 1; max-width: 560px;
+    height: 40px;
+    background: #f0f0f0;
+    border: 2px solid #bbb;
+    border-radius: 20px;
+    display: flex; align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    font-size: 12px; color: #999;
+    position: relative;
+  }
+
+  /* FIX: Category filter pills visible on all sizes */
+  .cat-pills {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 10px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fafafa;
+    scrollbar-width: none;
+  }
+  .cat-pill {
+    white-space: nowrap;
+    padding: 5px 14px;
+    border: 1.5px solid #bbb;
+    border-radius: 20px;
+    font-size: 11px;
+    background: #f5f5f5;
+    cursor: pointer;
+  }
+  .cat-pill.active {
+    background: #333;
+    color: #fff;
+    border-color: #333;
+  }
+
+  .nav-actions {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .nav-icon-btn {
+    width: 40px; height: 40px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; background: #f5f5f5; cursor: pointer;
+  }
+  /* FIX: Login always visible on mobile too */
+  .btn-login-wf {
+    height: 36px;
+    padding: 0 16px;
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 12px; font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  /* ---------- content ---------- */
+  .content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex: 1;
+  }
+
+  /* ---------- hero slider (improved) ---------- */
+  .hero {
+    height: 200px;
+    border: 2px dashed #bbb;
+    border-radius: 16px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    color: #999;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-inner {
+    text-align: center;
+  }
+  .hero-inner h2 {
+    font-size: 22px;
+    color: #555;
+    font-family: inherit;
+  }
+  .hero-inner p {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
+  .hero-cta {
+    margin-top: 12px;
+    padding: 8px 24px;
+    border: 2px solid #666;
+    border-radius: 8px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .slider-dots {
+    position: absolute;
+    bottom: 12px;
+    display: flex; gap: 6px;
+  }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; background: #bbb; }
+  .sdot.active { background: #333; }
+
+  /* ---------- section header ---------- */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+  }
+  .view-all {
+    font-size: 11px;
+    color: #666;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ---------- product grid ---------- */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .product-card {
+    border: 2px solid #ccc;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .product-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .product-img {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #e8e8e8;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 11px;
+  }
+  .product-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .product-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .product-price {
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+  }
+  .rating { font-size: 10px; color: #888; }
+  .add-btn {
+    width: 100%;
+    padding: 7px;
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* ---------- FIX: API Error / Empty state ---------- */
+  .empty-state {
+    border: 2px dashed #ccc;
+    border-radius: 16px;
+    padding: 48px 32px;
+    text-align: center;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .empty-icon { font-size: 48px; }
+  .empty-title { font-size: 16px; font-weight: bold; color: #555; }
+  .empty-sub { font-size: 12px; color: #999; max-width: 280px; line-height: 1.6; }
+  .retry-btn {
+    padding: 10px 24px;
+    border: 2px solid #888;
+    border-radius: 8px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  /* ---------- footer ---------- */
+  .footer {
+    border-top: 2px solid #ccc;
+    padding: 24px 20px 16px;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+    gap: 20px;
+    background: #fafafa;
+    font-size: 11px;
+  }
+  .footer h5 { font-size: 11px; margin-bottom: 8px; color: #555; text-transform: uppercase; letter-spacing: 0.05em; }
+  .footer ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .footer a { color: #777; text-decoration: underline; cursor: pointer; }
+  .footer-bottom {
+    border-top: 1px solid #ddd;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #aaa;
+    background: #fafafa;
+  }
+
+  /* ---------- annotation callouts ---------- */
+  .callout {
+    background: #fffde7;
+    border: 1.5px solid #f9a825;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #666;
+    margin-top: 6px;
+  }
+  .callout-fix {
+    background: #fce4ec;
+    border-color: #e91e63;
+    color: #555;
+  }
+  .callout-new {
+    background: #e8f5e9;
+    border-color: #4CAF50;
+    color: #555;
+  }
+
+  /* ---------- wireframe header ---------- */
+  .wf-header {
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+    padding: 16px 24px;
+  }
+  .wf-header h1 { font-size: 18px; color: #333; font-family: inherit; }
+  .wf-header p { font-size: 12px; color: #888; margin-top: 4px; font-family: inherit; }
+  .wf-meta {
+    display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .wf-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    color: #555;
+    font-family: Arial, sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<!-- Legend -->
+<div class="legend">
+  <h4>Component Key</h4>
+  <div class="legend-item"><div class="legend-dot dot-reuse"></div><span>[REUSE] Existing component</span></div>
+  <div class="legend-item"><div class="legend-dot dot-new"></div><span>[NEW] New component needed</span></div>
+  <div class="legend-item"><div class="legend-dot dot-info"></div><span>[FIX] Issue addressed</span></div>
+</div>
+
+<!-- Wireframe Header -->
+<div class="wf-header">
+  <h1>ElectroCom Storefront — Redesign Wireframe</h1>
+  <p>A balanced redesign addressing the 25 issues found in the design review. Showing: Home page layout with key fixes applied.</p>
+  <div class="wf-meta">
+    <span class="wf-tag">Option: Balanced Redesign</span>
+    <span class="wf-tag">Fixes: #3 #4 #5 #7 #9 #16 #23</span>
+    <span class="wf-tag">Grayscale / Low Fidelity</span>
+  </div>
+</div>
+
+<!-- Page Frame -->
+<div class="page">
+
+  <!-- ============ SIDEBAR ============ -->
+  <!-- REUSABLE: Sidebar from src/components/Sidebar.jsx -->
+  <div style="position: relative;">
+    <span class="badge badge-reuse" style="top: 4px; right: 4px;">REUSE: Sidebar</span>
+    <div class="sidebar">
+      <div class="sidebar-icon active" title="Home">🏠</div>
+      <div class="sidebar-icon" title="Shop">🛍️</div>
+      <!-- FIX #3: All sidebar icons become <button> with aria-label -->
+      <div class="callout callout-fix" style="width: 60px; font-size: 9px; text-align: center; margin: 0 4px;">
+        Fix #3: Use &lt;button&gt;
+      </div>
+      <div class="sidebar-icon" title="Map">📍</div>
+      <div class="sidebar-icon" title="Wishlist">♥</div>
+      <div class="sidebar-icon" title="Orders">📦</div>
+      <div class="sidebar-icon" title="Products">🔷</div>
+      <div class="sidebar-icon" title="Notifications">🔔</div>
+      <div class="sidebar-icon" title="Support">❓</div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-icon" title="Settings">⚙️</div>
+      <div class="sidebar-icon" title="Profile">👤</div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- ====== TOP NAV ====== -->
+    <!-- REUSABLE: Navbar from src/components/Navbar.jsx -->
+    <div style="position: relative;">
+      <span class="badge badge-reuse" style="top: 2px; right: 2px; position: absolute; z-index: 200;">REUSE: Navbar</span>
+      <div class="topnav">
+        <!-- Logo -->
+        <div class="rel">
+          <span class="badge badge-reuse">REUSE: Logo</span>
+          <div class="logo-box">[ ELECTRO•Com ]</div>
+        </div>
+
+        <!-- Search -->
+        <!-- FIX #5: search input is a real <input> with aria-label -->
+        <div class="rel" style="flex:1; max-width: 560px;">
+          <span class="badge badge-fix">FIX #5: aria-label</span>
+          <div class="search-wrap">
+            🔍 &nbsp; Search for products or navigate...
+            &nbsp;<span style="margin-left:auto; font-size:10px; color:#bbb">⌘K</span>
+          </div>
+        </div>
+
+        <!-- Nav Actions -->
+        <!-- FIX #5: icon buttons get aria-label; FIX #7: login always visible -->
+        <div class="nav-actions">
+          <div class="rel">
+            <span class="badge badge-fix" style="font-size:8px;">FIX #5</span>
+            <div class="nav-icon-btn" title="Map (aria-label='View store location')">📍</div>
+          </div>
+          <div class="rel">
+            <span class="badge badge-fix" style="font-size:8px;">FIX #5</span>
+            <div class="nav-icon-btn" title="Notifications (aria-label='Notifications, 3 unread')">🔔</div>
+          </div>
+          <div class="rel">
+            <span class="badge badge-fix" style="font-size:8px;">FIX #5</span>
+            <div class="nav-icon-btn" title="Cart (aria-label='Shopping cart, 2 items')">🛒</div>
+          </div>
+          <div class="rel">
+            <span class="badge badge-fix" style="font-size:8px;">FIX #5</span>
+            <div class="nav-icon-btn" title="Toggle theme (aria-label='Switch to dark mode')">🌙</div>
+          </div>
+          <!-- FIX #7: Login button always visible including mobile -->
+          <div class="rel">
+            <span class="badge badge-fix">FIX #7: always visible</span>
+            <button class="btn-login-wf">Login</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CATEGORY FILTER PILLS ====== -->
+    <!-- NEW: CategoryPills replaces dropdown-only pattern; visible on all screen sizes -->
+    <!-- FIX #16: mobile-visible category filter -->
+    <div style="position: relative;">
+      <span class="badge badge-new" style="position: absolute; top: 2px; right: 8px; z-index: 10;">NEW: CategoryPills</span>
+      <span class="badge badge-fix" style="position: absolute; top: 2px; right: 115px; z-index: 10; background: #F44336;">FIX #16: mobile visible</span>
+      <div class="cat-pills">
+        <div class="cat-pill active">All Categories</div>
+        <div class="cat-pill">Resistors</div>
+        <div class="cat-pill">Capacitors</div>
+        <div class="cat-pill">Transistors</div>
+        <div class="cat-pill">ICs / Chips</div>
+        <div class="cat-pill">Modules</div>
+        <div class="cat-pill">Arduino</div>
+        <div class="cat-pill">Raspberry Pi</div>
+        <div class="cat-pill">Sensors</div>
+        <div class="cat-pill">STEM Kits</div>
+      </div>
+    </div>
+
+    <!-- ====== CONTENT AREA ====== -->
+    <div class="content">
+
+      <!-- ====== HERO SLIDER ====== -->
+      <!-- REUSABLE: HeroSlider from src/components/HeroSlider.jsx -->
+      <div style="position: relative;">
+        <span class="badge badge-reuse">REUSE: HeroSlider</span>
+        <div class="hero">
+          <div class="hero-inner">
+            <h2>[ Hero Image / Promo ]</h2>
+            <p>e.g. "Arduino Starter Kits — 20% Off This Week"</p>
+            <button class="hero-cta">Shop Now →</button>
+          </div>
+          <div class="slider-dots">
+            <div class="sdot active"></div>
+            <div class="sdot"></div>
+            <div class="sdot"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== PRODUCT GRID ====== -->
+      <div>
+        <div class="section-header">
+          <div class="rel">
+            <span class="badge badge-reuse">REUSE: section heading</span>
+            <div class="section-title">Product Catalog</div>
+          </div>
+          <span class="view-all">View all →</span>
+        </div>
+
+        <!-- FIX #9: Improved empty state (shown when API is down) -->
+        <div style="position:relative; margin-bottom: 12px;">
+          <span class="badge badge-fix">FIX #9: empty state</span>
+          <span class="badge badge-new" style="right: 140px;">NEW: EmptyState</span>
+          <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <div class="empty-title">No products available right now</div>
+            <div class="empty-sub">Our catalog couldn't be loaded. Please check your connection and try again.</div>
+            <button class="retry-btn">↻ Retry</button>
+          </div>
+        </div>
+
+        <!-- Normal product grid (shown when products load) -->
+        <!-- REUSABLE: ProductCard from src/components/ProductCard.jsx -->
+        <div style="position:relative;">
+          <span class="badge badge-reuse" style="top: -8px;">REUSE: ProductCard ×N</span>
+          <div class="product-grid">
+            <!-- Skeleton / loaded cards -->
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">Arduino Uno Rev3</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 85.00</span>
+                <span class="rating">★ 4.8</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">ESP32 Dev Module</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 55.00</span>
+                <span class="rating">★ 4.9</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">HC-SR04 Ultrasonic</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 12.00</span>
+                <span class="rating">★ 4.7</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">Resistor Pack 600pcs</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 25.00</span>
+                <span class="rating">★ 5.0</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">STEM Starter Kit</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 180.00</span>
+                <span class="rating">★ 4.6</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+            <div class="product-card">
+              <div class="product-img">[Product Image]</div>
+              <div class="product-name">16x2 LCD Display</div>
+              <div class="product-price-row">
+                <span class="product-price">GHS 22.00</span>
+                <span class="rating">★ 4.8</span>
+              </div>
+              <button class="add-btn">Add to Cart</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout-new" style="margin-top: 10px;">
+          [NEW] Pagination or "Load More" button below the grid — replaces infinite scroll-less infinite state
+        </div>
+      </div>
+
+    </div><!-- end content -->
+
+    <!-- ====== FOOTER ====== -->
+    <!-- REUSABLE: Footer from src/components/Footer.jsx -->
+    <!-- FIX #23: footer restructured to 5 columns or merged Contact into first col -->
+    <div style="position: relative;">
+      <span class="badge badge-reuse" style="position:absolute; top: 4px; right: 4px; z-index:10;">REUSE: Footer</span>
+      <span class="badge badge-fix" style="position:absolute; top: 4px; right: 110px; z-index:10; background:#F44336;">FIX #23: grid fix</span>
+      <div class="footer">
+        <div>
+          <div style="font-size:13px; font-weight:bold; margin-bottom:8px;">ELECTRO•Com•</div>
+          <p style="color:#888; font-size:11px; line-height:1.6; margin-bottom:10px;">Your trusted destination for premium electronics and cutting-edge technology.</p>
+          <div style="display:flex; gap:6px; margin-bottom:12px;">
+            <span style="width:28px;height:28px;border:1px solid #ccc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">f</span>
+            <span style="width:28px;height:28px;border:1px solid #ccc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">𝕏</span>
+            <span style="width:28px;height:28px;border:1px solid #ccc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;">in</span>
+          </div>
+          <!-- Contact merged into first column -->
+          <div style="font-size:10px;color:#888;line-height:1.8;">
+            ✉ support@electrocom.com<br>
+            📞 0536683393 / 0506408074<br>
+            📍 Accra, Kumasi &amp; Wa, Ghana
+          </div>
+        </div>
+        <div>
+          <h5>Legal</h5>
+          <ul>
+            <li><a>Terms of Service</a></li>
+            <li><a>Privacy Policy</a></li>
+            <li><a>Return Policy</a></li>
+            <li><a>Shipping Info</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Quick Links</h5>
+          <ul>
+            <li><a>Home</a></li>
+            <li><a>Shop</a></li>
+            <li><a>Favorites</a></li>
+            <li><a>Transactions</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Support</h5>
+          <ul>
+            <!-- FIX #11: removed duplicate "About Us" / "Contact Support" both to /support -->
+            <li><a>About Us</a></li>
+            <li><a>FAQ</a></li>
+            <li><a>Track Order</a></li>
+            <li><a>Contact Us</a></li>
+          </ul>
+        </div>
+        <div>
+          <!-- NEW: Newsletter signup block in footer -->
+          <div style="position:relative;">
+            <span class="badge badge-new" style="top:-8px; right:-4px;">NEW: Newsletter</span>
+            <h5>Stay Updated</h5>
+            <p style="color:#999;line-height:1.5;margin-bottom:8px;">Get deals and component updates in your inbox.</p>
+            <div style="display:flex;gap:4px;">
+              <div style="flex:1;height:32px;border:1.5px solid #ccc;border-radius:6px;background:#fff;"></div>
+              <div style="width:60px;height:32px;background:#333;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;cursor:pointer;">Send</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 ElectroCom. All rights reserved.</span>
+        <div style="display:flex;gap:10px;">
+          <a style="color:#aaa;text-decoration:underline;cursor:pointer;">Privacy</a>
+          <span>•</span>
+          <a style="color:#aaa;text-decoration:underline;cursor:pointer;">Terms</a>
+          <span>•</span>
+          <a style="color:#aaa;text-decoration:underline;cursor:pointer;">Cookies</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main -->
+</div><!-- end page -->
+
+<!-- ===== Summary of fixes shown in this wireframe ===== -->
+<div style="margin: 20px; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: #fff; font-family: Arial, sans-serif; font-size: 12px;">
+  <h3 style="font-size:14px; margin-bottom:12px;">🗂️ Changes Shown in This Wireframe</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr style="background:#f5f5f5;">
+        <th style="text-align:left;padding:6px 10px;border:1px solid #ddd;">Issue</th>
+        <th style="text-align:left;padding:6px 10px;border:1px solid #ddd;">Change</th>
+        <th style="text-align:left;padding:6px 10px;border:1px solid #ddd;">Component</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;">#3 Non-button divs</td><td style="padding:6px 10px;border:1px solid #ddd;">All icon buttons → &lt;button&gt; elements</td><td style="padding:6px 10px;border:1px solid #ddd;">Navbar.jsx, Sidebar.jsx</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:6px 10px;border:1px solid #ddd;">#5 No aria-label</td><td style="padding:6px 10px;border:1px solid #ddd;">Added aria-label to all icon buttons</td><td style="padding:6px 10px;border:1px solid #ddd;">Navbar.jsx</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;">#7 Mobile login missing</td><td style="padding:6px 10px;border:1px solid #ddd;">Login button always visible; min-width preserved</td><td style="padding:6px 10px;border:1px solid #ddd;">Navbar.jsx, style.css</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:6px 10px;border:1px solid #ddd;">#9 Bad empty state</td><td style="padding:6px 10px;border:1px solid #ddd;">New EmptyState component with icon + retry CTA</td><td style="padding:6px 10px;border:1px solid #ddd;">NEW: EmptyState.jsx</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;">#11 Duplicate footer links</td><td style="padding:6px 10px;border:1px solid #ddd;">Removed duplicate; distinct footer links</td><td style="padding:6px 10px;border:1px solid #ddd;">Footer.jsx</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:6px 10px;border:1px solid #ddd;">#16 No mobile category filter</td><td style="padding:6px 10px;border:1px solid #ddd;">New horizontal-scroll CategoryPills below nav</td><td style="padding:6px 10px;border:1px solid #ddd;">NEW: CategoryPills.jsx</td></tr>
+      <tr><td style="padding:6px 10px;border:1px solid #ddd;">#23 Footer layout break</td><td style="padding:6px 10px;border:1px solid #ddd;">Contact merged into first col; proper 4-col grid</td><td style="padding:6px 10px;border:1px solid #ddd;">Footer.jsx + CSS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

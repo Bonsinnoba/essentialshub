@@ -129,11 +129,13 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
 
   const SettingCard = ({ title, icon: Icon, children }) => (
     <div className="card glass setting-card" style={{ 
-      padding: '28px',
+      padding: '28px 16px',
       display: 'flex',
       flexDirection: 'column',
       gap: '24px',
       transition: 'all 0.3s ease',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ 
@@ -157,9 +159,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
     <div className="settings-page" style={{ 
       display: 'grid', 
       gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-      gap: '24px', 
-      padding: '0 16px 48px',
-      width: '100%'
+      gap: '24px'
     }}>
       <div className="page-header" style={{ 
         gridColumn: '1 / -1',
@@ -359,8 +359,6 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         @media (min-width: 1024px) {
           .settings-page {
             grid-template-columns: repeat(2, 1fr) !important;
-            max-width: 1100px;
-            margin: 0 auto;
           }
         }
         .setting-card:hover {

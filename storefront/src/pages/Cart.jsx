@@ -40,7 +40,7 @@ export default function Cart() {
 
   if (!user) {
     return (
-      <div className="card glass animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 32px', textAlign: 'center' }}>
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center', justifyContent: 'center', padding: '80px 0', textAlign: 'center', width: '100%' }}>
         <div className="glass" style={{ 
           width: '80px', 
           height: '80px', 
@@ -69,7 +69,7 @@ export default function Cart() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="card glass animate-fade-in cart-empty-state">
+      <div className="animate-fade-in cart-empty-state" style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center', justifyContent: 'center', padding: '80px 0', textAlign: 'center', width: '100%' }}>
         <div className="cart-icon-wrapper">
           <ShoppingBag size={64} />
         </div>
@@ -85,7 +85,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="card glass animate-fade-in cart-container" style={{ position: 'relative' }}>
+    <div className="animate-fade-in cart-container" style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', width: '100%', maxWidth: '100%' }}>
       <div className="page-header cart-page-header">
         <h1 className="cart-title">Shopping Cart</h1>
         <p className="cart-subtitle">You have {cartItems.length} items in your cart.</p>

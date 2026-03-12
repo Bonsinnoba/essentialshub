@@ -129,6 +129,9 @@ function AppContent() {
 
   useEffect(() => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    // Sync theme to html/body so the full viewport background matches the app theme
+    document.documentElement.classList.toggle('dark-mode', isDarkMode);
+    document.body.classList.toggle('dark-mode', isDarkMode);
   }, [isDarkMode]);
 
   const productsRef = useRef(products);
@@ -479,17 +482,19 @@ const AppProviders = ({ children }) => {
   // Using user?.id as a key ensures that all nested providers (Notifications, Cart, etc.) 
   // fully remount and reset their internal states when the user changes or logs out.
   return (
-    <NotificationProvider>
-      <SettingsProvider>
-        <WishlistProvider>
-          <CartProvider>
-            <WalletProvider>
-              {children}
-            </WalletProvider>
-          </CartProvider>
-        </WishlistProvider>
-      </SettingsProvider>
-    </NotificationProvider>
+    <div key={user?.id} style={{ display: 'contents' }}>
+      <NotificationProvider>
+        <SettingsProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <WalletProvider>
+                {children}
+              </WalletProvider>
+            </CartProvider>
+          </WishlistProvider>
+        </SettingsProvider>
+      </NotificationProvider>
+    </div>
   );
 };
 

@@ -61,12 +61,15 @@ export default function ResetPassword() {
   return (
     <div className="reset-password-page animate-fade-in" style={{ 
       maxWidth: '450px', 
-      margin: '100px auto', 
-      padding: '40px', 
+      margin: '40px auto', 
       background: 'var(--bg-card)', 
       borderRadius: '24px', 
       border: '1px solid var(--border-light)',
-      boxShadow: 'var(--shadow-xl)'
+      boxShadow: 'var(--shadow-xl)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '24px',
+      padding: '32px'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <div style={{ 

@@ -181,8 +181,8 @@ export default function Navbar({
           <Search size={20} />
         </div>
         
-        {/* Mobile Map Toggle */}
-        <div className="sidebar-icon btn" onClick={onMapClick}>
+        {/* Mobile Map Toggle - hidden on mobile; Map is in the sidebar */}
+        <div className="sidebar-icon btn nav-map-btn" onClick={onMapClick}>
           <Map size={20} />
         </div>
         

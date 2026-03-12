@@ -145,7 +145,7 @@ export default function Verification() {
   }
 
   return (
-    <div className="card glass animate-fade-in" style={{ padding: '32px' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <button 
         onClick={() => navigate(-1)} 
         style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginBottom: '24px' }}

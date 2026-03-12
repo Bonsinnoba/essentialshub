@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
               style={{ 
                 animationDelay: `${idx * 0.05}s`,
                 animationFillMode: 'both',
-                display: 'block'
+                width: '100%'
               }}
             >
               {item.type === 'map' ? (

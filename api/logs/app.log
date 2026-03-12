@@ -81,3 +81,23 @@
 2026-03-09 18:58:37 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
 2026-03-09 19:02:39 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
 2026-03-09 19:08:59 [INFO] [PRODUCTS] Product updated (ID: 55) by Super User
+2026-03-11 17:43:04 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-11 17:56:05 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-11 17:57:41 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-11 17:58:10 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-12 05:09:07 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-12 05:09:48 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-12 09:36:52 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-12 09:37:21 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-12 09:38:33 [WARNING] [EMAIL_SERVICE] Failed to send email to test_admin@example.com via native mail(). Check server configuration.
+2026-03-12 09:38:33 [INFO] [EMAIL_SERVICE] SIMULATED EMAIL to test_admin@example.com: Your verification code is: 984159. Please enter this code to activate your account.
+2026-03-12 09:39:01 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-12 09:40:19 [WARNING] [EMAIL_SERVICE] Failed to send email to test_admin@example.com via native mail(). Check server configuration.
+2026-03-12 09:40:19 [INFO] [EMAIL_SERVICE] SIMULATED EMAIL to test_admin@example.com: Your verification code is: 743791. Please enter this code to activate your account.
+2026-03-12 09:42:48 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-12 09:44:00 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-12 09:44:17 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-12 09:45:35 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-12 09:46:25 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-12 09:47:45 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-12 09:51:03 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER

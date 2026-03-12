@@ -12,7 +12,7 @@ export default function Favorites({ onProductClick, searchQuery }) {
 
   if (!user) {
     return (
-      <div className="animate-fade-in glass" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 32px', textAlign: 'center' }}>
+      <div className="animate-fade-in glass" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', textAlign: 'center', width: '100%' }}>
         <div className="glass" style={{ 
           width: '80px', 
           height: '80px', 
@@ -47,9 +47,9 @@ export default function Favorites({ onProductClick, searchQuery }) {
   });
 
   return (
-    <div className="animate-fade-in" style={{ padding: '0 0 32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, margin: 0 }}>My Favorites</h1>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0 }}>My Favorites</h1>
         <div style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600, background: 'var(--bg-main)', padding: '6px 12px', borderRadius: '100px' }}>
           {wishlistItems.length} {wishlistItems.length === 1 ? 'Item' : 'Items'}
         </div>
@@ -61,9 +61,10 @@ export default function Favorites({ onProductClick, searchQuery }) {
           flexDirection: 'column', 
           alignItems: 'center', 
           justifyContent: 'center', 
-          padding: '80px 20px',
+          padding: '80px 0',
           color: 'var(--text-muted)',
-          textAlign: 'center'
+          textAlign: 'center',
+          width: '100%'
         }}>
           <div className="glass" style={{ 
             width: '80px', 
@@ -91,8 +92,10 @@ export default function Favorites({ onProductClick, searchQuery }) {
       ) : (
         <div className="product-grid" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: '24px',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+          gap: '16px',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
           {filteredItems.map((p, idx) => (
             <div 
@@ -104,6 +107,7 @@ export default function Favorites({ onProductClick, searchQuery }) {
               }}
             >
               <ProductCard 
+                id={p.id}
                 name={p.name} 
                 price={p.price} 
                 image={p.image} 

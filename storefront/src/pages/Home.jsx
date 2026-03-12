@@ -40,6 +40,7 @@ export default function Home({ products, onProductClick, searchQuery, loading })
                 }}
               >
                 <ProductCard 
+                  id={p.id}
                   name={p.name} 
                   price={p.price} 
                   image={p.image} 
