@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Moon, Sun, Bell, Lock, Globe, Shield, Settings as SettingsIcon, 
   ChevronRight, User, MapPin, CreditCard, ShoppingBag, 
-  Trash2, HelpCircle, Eye, Mail, Phone, CreditCard as PaymentIcon,
-  History, DollarSign, Smartphone, Receipt
+  Trash2, HelpCircle, Eye, EyeOff, Mail, Phone, CreditCard as PaymentIcon,
+  History, DollarSign, Smartphone, Receipt, X, AlertTriangle, KeyRound
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../context/SettingsContext';
 import { useUser } from '../context/UserContext';
-import { deleteMyAccount } from '../services/api';
+import { deleteMyAccount, changePassword } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
@@ -17,23 +17,73 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
   const { user, logout } = useUser();
   const navigate = useNavigate();
 
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Change password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  // ── Change Password ──────────────────────────────────────────────
+  const openPasswordModal = () => {
+    setPwForm({ current: '', next: '', confirm: '' });
+    setPwError('');
+    setShowPasswordModal(true);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError('');
+
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError('New passwords do not match.');
+      return;
+    }
+    if (pwForm.next.length < 8) {
+      setPwError('New password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.next === pwForm.current) {
+      setPwError('New password cannot be the same as your current password.');
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      const result = await changePassword(pwForm.current, pwForm.next);
+      if (result.success) {
+        addNotification('Password changed successfully!', 'success');
+        setShowPasswordModal(false);
+      } else {
+        setPwError(result.message || 'Failed to change password.');
+      }
+    } catch {
+      setPwError('Connection error. Please try again.');
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  // ── Account Deletion ─────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (!user) return;
-    
-    const confirmed = window.confirm("Are you absolutely sure you want to delete your account? This action cannot be undone.");
-    if (confirmed) {
-      try {
-        const result = await deleteMyAccount();
-        if (result.success) {
-          alert("Your account has been permanently deleted.");
-          logout();
-          navigate('/');
-        } else {
-          addNotification(result.message || "Failed to delete account", "error");
-        }
-      } catch (error) {
-        addNotification("An error occurred during account deletion", "error");
+    try {
+      const result = await deleteMyAccount();
+      if (result.success) {
+        addNotification('Your account has been permanently deleted.', 'success');
+        logout();
+        navigate('/');
+      } else {
+        addNotification(result.message || 'Failed to delete account', 'error');
       }
+    } catch {
+      addNotification('An error occurred during account deletion', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -52,28 +102,21 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
     return title.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
+  // ── Sub-components ───────────────────────────────────────────────
   const Toggle = ({ checked, onChange }) => (
     <div 
       onClick={onChange} 
       style={{ 
-        width: '42px', 
-        height: '24px', 
+        width: '42px', height: '24px', 
         background: checked ? 'var(--primary-blue)' : 'rgba(255, 255, 255, 0.1)', 
-        borderRadius: '20px', 
-        position: 'relative', 
-        cursor: 'pointer',
+        borderRadius: '20px', position: 'relative', cursor: 'pointer',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         border: '1px solid var(--border-light)'
       }}
     >
       <div style={{ 
-        width: '18px', 
-        height: '18px', 
-        background: 'white', 
-        borderRadius: '50%', 
-        position: 'absolute', 
-        top: '2px', 
-        left: checked ? '21px' : '2px', 
+        width: '18px', height: '18px', background: 'white', borderRadius: '50%', 
+        position: 'absolute', top: '2px', left: checked ? '21px' : '2px', 
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
       }}></div>
@@ -84,22 +127,15 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
     <div className="setting-row" 
       onClick={onClick}
       style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        padding: '12px', 
-        borderRadius: '16px', 
-        transition: 'all 0.2s ease',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '12px', borderRadius: '16px', transition: 'all 0.2s ease',
         cursor: onClick ? 'pointer' : 'default'
       }}
     >
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
         <div style={{ 
-          background: 'var(--bg-main)', 
-          padding: '10px', 
-          borderRadius: '12px', 
-          color: 'var(--text-muted)',
-          display: 'flex'
+          background: 'var(--bg-main)', padding: '10px', borderRadius: '12px', 
+          color: 'var(--text-muted)', display: 'flex'
         }}>
           <Icon size={18} />
         </div>
@@ -116,12 +152,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
     <button 
       className={`btn-${type}`} 
       onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
-      style={{ 
-        padding: '8px 16px', 
-        borderRadius: '10px', 
-        fontWeight: 600,
-        fontSize: '13px'
-      }}
+      style={{ padding: '8px 16px', borderRadius: '10px', fontWeight: 600, fontSize: '13px' }}
     >
       {label}
     </button>
@@ -129,21 +160,13 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
 
   const SettingCard = ({ title, icon: Icon, children }) => (
     <div className="card glass setting-card" style={{ 
-      padding: '28px 16px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '24px',
-      transition: 'all 0.3s ease',
-      width: '100%',
-      boxSizing: 'border-box'
+      padding: '28px 16px', display: 'flex', flexDirection: 'column', gap: '24px',
+      transition: 'all 0.3s ease', width: '100%', boxSizing: 'border-box'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ 
-          background: 'rgba(59, 130, 246, 0.1)', 
-          padding: '10px', 
-          borderRadius: '12px', 
-          color: 'var(--primary-blue)',
-          display: 'flex'
+          background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '12px', 
+          color: 'var(--primary-blue)', display: 'flex'
         }}>
           <Icon size={20} />
         </div>
@@ -157,14 +180,9 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
 
   return (
     <div className="settings-page" style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-      gap: '24px'
+      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px'
     }}>
-      <div className="page-header" style={{ 
-        gridColumn: '1 / -1',
-        padding: '24px 0 8px' 
-      }}>
+      <div className="page-header" style={{ gridColumn: '1 / -1', padding: '24px 0 8px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-1px', marginBottom: '8px' }}>Global Settings</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>Manage your account preferences, orders, and security.</p>
       </div>
@@ -173,21 +191,15 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('Account Information') && (
         <SettingCard title="Account Information" icon={User}>
           <SettingRow 
-            icon={Mail} 
-            title="Email Address" 
-            description="primary@electrocom.com" 
+            icon={Mail} title="Email Address" description={user?.email || 'primary@electrocom.com'}
             action={<ActionButton label="Change" onClick={() => handleAction("Email Change", "A verification link has been sent to your new address.")} />} 
           />
           <SettingRow 
-            icon={Phone} 
-            title="Phone Number" 
-            description="+233 53 668 3393" 
+            icon={Phone} title="Phone Number" description={user?.phone || '+233 53 668 3393'}
             action={<ActionButton label="Change" onClick={() => handleAction("Phone Change", "OTP requested for verification.")} />} 
           />
           <SettingRow 
-            icon={MapPin} 
-            title="Shipping Addresses" 
-            description="2 saved addresses" 
+            icon={MapPin} title="Shipping Addresses" description="Manage saved addresses"
             onClick={() => handleAction("Addresses", "Redirecting to address manager...")}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
@@ -198,22 +210,16 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('Shopping & Orders') && (
         <SettingCard title="Shopping & Orders" icon={ShoppingBag}>
           <SettingRow 
-            icon={Eye} 
-            title="Order Tracking" 
-            description="Real-time SMS updates" 
+            icon={Eye} title="Order Tracking" description="Real-time SMS updates"
             action={<Toggle checked={settings.orderTracking} onChange={() => handleToggle('orderTracking')} />} 
           />
           <SettingRow 
-            icon={History} 
-            title="Purchase History" 
-            description="Manage your previous orders" 
+            icon={History} title="Purchase History" description="Manage your previous orders"
             onClick={() => handleAction("History", "Opening order archive...")}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
           <SettingRow 
-            icon={HelpCircle} 
-            title="Return Policy" 
-            description="30-day money-back guarantee" 
+            icon={HelpCircle} title="Return Policy" description="30-day money-back guarantee"
             action={<ActionButton label="View" onClick={() => handleAction("Returns", "Showing detailed return policy.")} />} 
           />
         </SettingCard>
@@ -223,23 +229,17 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('Payments & Transactions') && (
         <SettingCard title="Payments & Transactions" icon={Receipt}>
           <SettingRow 
-            icon={PaymentIcon} 
-            title="Payment Methods" 
-            description="Visa, PayPal, Mobile Money" 
+            icon={PaymentIcon} title="Payment Methods" description="Visa, PayPal, Mobile Money"
             onClick={() => handleAction("Payments", "Opening secure payment manager...")}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
           <SettingRow 
-            icon={History} 
-            title="Transaction History" 
-            description="View all previous payments" 
+            icon={History} title="Transaction History" description="View all previous payments"
             onClick={() => navigate('/transactions')}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
           <SettingRow 
-            icon={DollarSign} 
-            title="Currency" 
-            description={settings.currency} 
+            icon={DollarSign} title="Currency" description={settings.currency}
             action={
               <select 
                 value={settings.currency}
@@ -248,15 +248,9 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
                   addNotification(`Currency switched to ${e.target.value}`, 'info');
                 }}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--bg-main)',
-                  color: 'var(--text-main)',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  outline: 'none'
+                  padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',
+                  background: 'var(--bg-main)', color: 'var(--text-main)', fontWeight: 600,
+                  fontSize: '13px', cursor: 'pointer', outline: 'none'
                 }}
               >
                 <option value="GHS">GHS (GH₵)</option>
@@ -273,15 +267,11 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('Notifications') && (
         <SettingCard title="Notifications" icon={Bell}>
           <SettingRow 
-            icon={Mail} 
-            title="Email Alerts" 
-            description="Order confirmations & receipts" 
+            icon={Mail} title="Email Alerts" description="Order confirmations & receipts"
             action={<Toggle checked={settings.emailNotif} onChange={() => handleToggle('emailNotif')} />} 
           />
           <SettingRow 
-            icon={Smartphone} 
-            title="Push Notifications" 
-            description="Flash sales and promo alerts" 
+            icon={Smartphone} title="Push Notifications" description="Flash sales and promo alerts"
             action={<Toggle checked={settings.pushNotif} onChange={() => handleToggle('pushNotif')} />} 
           />
         </SettingCard>
@@ -291,24 +281,29 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('Security & Privacy') && (
         <SettingCard title="Security & Privacy" icon={Shield}>
           <SettingRow 
-            icon={Lock} 
-            title="2-Step Verification" 
-            description="Enhanced account protection" 
+            icon={Lock} title="2-Step Verification" description="Enhanced account protection"
             action={<Toggle checked={settings.twoFactor} onChange={() => handleToggle('twoFactor')} />} 
           />
           <SettingRow 
-            icon={Eye} 
-            title="Privacy Guard" 
-            description="Manage personal data usage" 
+            icon={KeyRound} title="Change Password" description="Update your account password"
+            action={<ActionButton label="Change" onClick={openPasswordModal} />} 
+          />
+          <SettingRow 
+            icon={Eye} title="Privacy Guard" description="Manage personal data usage"
             onClick={() => handleAction("Privacy", "Opening data control center...")}
             action={<ActionButton label="Manage" />} 
           />
           <SettingRow 
-            icon={Trash2} 
-            title="Account Deletion" 
-            description="Permanently remove your data" 
-            onClick={handleDeleteAccount}
-            action={<span onClick={(e) => { e.stopPropagation(); handleDeleteAccount(); }} style={{ color: '#ef4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Delete</span>} 
+            icon={Trash2} title="Account Deletion" description="Permanently remove your data"
+            onClick={() => setShowDeleteConfirm(true)}
+            action={
+              <span 
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }} 
+                style={{ color: '#ef4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Delete
+              </span>
+            } 
           />
         </SettingCard>
       )}
@@ -317,15 +312,12 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {shouldShow('App Preferences') && (
         <SettingCard title="App Preferences" icon={SettingsIcon}>
           <SettingRow 
-            icon={isDarkMode ? Moon : Sun} 
-            title="Interface Theme" 
-            description={`Currently in ${isDarkMode ? 'Dark' : 'Light'} mode`} 
+            icon={isDarkMode ? Moon : Sun} title="Interface Theme"
+            description={`Currently in ${isDarkMode ? 'Dark' : 'Light'} mode`}
             action={<ActionButton label={isDarkMode ? "Light Mode" : "Dark Mode"} onClick={toggleDarkMode} />} 
           />
           <SettingRow 
-            icon={Globe} 
-            title="Language" 
-            description={settings.language} 
+            icon={Globe} title="Language" description={settings.language}
             action={
               <select 
                 value={settings.language}
@@ -334,15 +326,9 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
                   addNotification(`Language set to ${e.target.value}`, 'info');
                 }}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--bg-main)',
-                  color: 'var(--text-main)',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  outline: 'none'
+                  padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',
+                  background: 'var(--bg-main)', color: 'var(--text-main)', fontWeight: 600,
+                  fontSize: '13px', cursor: 'pointer', outline: 'none'
                 }}
               >
                 <option value="English (UK)">English (UK)</option>
@@ -353,6 +339,209 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
             } 
           />
         </SettingCard>
+      )}
+
+      {/* ── Delete Confirmation Dialog ─────────────────────────────── */}
+      {showDeleteConfirm && (
+        <div 
+          style={{ 
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
+          }}
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="card glass animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '420px', width: '100%', padding: '32px', textAlign: 'center' }}
+          >
+            <div style={{ 
+              width: '64px', height: '64px', borderRadius: '50%', 
+              background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px'
+            }}>
+              <AlertTriangle size={28} />
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '12px' }}>Delete Account?</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', marginBottom: '28px' }}>
+              This action is <strong>permanent and irreversible</strong>. All your data, orders, and preferences will be deleted immediately.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                className="btn-secondary" style={{ flex: 1 }} 
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-danger" style={{ flex: 1 }}
+                onClick={handleDeleteAccount}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Change Password Modal ──────────────────────────────────── */}
+      {showPasswordModal && (
+        <div 
+          style={{ 
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
+          }}
+          onClick={() => setShowPasswordModal(false)}
+        >
+          <div 
+            className="card glass animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '420px', width: '100%', padding: '32px', position: 'relative' }}
+          >
+            <button 
+              onClick={() => setShowPasswordModal(false)}
+              style={{ 
+                position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none',
+                color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '8px'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ 
+                background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '12px', 
+                color: 'var(--primary-blue)', display: 'flex'
+              }}>
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Change Password</h3>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Minimum 8 characters required</p>
+              </div>
+            </div>
+
+            {pwError && (
+              <div style={{ 
+                padding: '10px 14px', marginBottom: '16px', borderRadius: '10px',
+                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                fontSize: '13px', border: '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                {pwError}
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Current Password */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  Current Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showCurrentPw ? 'text' : 'password'}
+                    value={pwForm.current}
+                    onChange={(e) => setPwForm(prev => ({ ...prev, current: e.target.value }))}
+                    placeholder="Enter current password"
+                    required
+                    autoFocus
+                    style={{ 
+                      width: '100%', padding: '10px 40px 10px 14px', borderRadius: '12px',
+                      border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
+                      color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    style={{ 
+                      position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  New Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showNewPw ? 'text' : 'password'}
+                    value={pwForm.next}
+                    onChange={(e) => setPwForm(prev => ({ ...prev, next: e.target.value }))}
+                    placeholder="Enter new password"
+                    required
+                    style={{ 
+                      width: '100%', padding: '10px 40px 10px 14px', borderRadius: '12px',
+                      border: '1px solid var(--border-light)', background: 'var(--bg-surface)',
+                      color: 'var(--text-main)', outline: 'none', boxSizing: 'border-box',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowNewPw(!showNewPw)}
+                    style={{ 
+                      position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {pwForm.next && (
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: pwForm.next.length >= 8 ? '#22c55e' : 'var(--text-muted)' }}>
+                    {pwForm.next.length >= 8 ? '✓ Strong enough' : `${8 - pwForm.next.length} more characters needed`}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  Confirm New Password
+                </label>
+                <input 
+                  type={showNewPw ? 'text' : 'password'}
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm(prev => ({ ...prev, confirm: e.target.value }))}
+                  placeholder="Re-enter new password"
+                  required
+                  style={{ 
+                    width: '100%', padding: '10px 14px', borderRadius: '12px',
+                    border: `1px solid ${pwForm.confirm && pwForm.confirm !== pwForm.next ? '#ef4444' : 'var(--border-light)'}`,
+                    background: 'var(--bg-surface)', color: 'var(--text-main)',
+                    outline: 'none', boxSizing: 'border-box', fontSize: '14px'
+                  }}
+                />
+                {pwForm.confirm && pwForm.confirm !== pwForm.next && (
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: '#ef4444' }}>Passwords do not match</div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button 
+                  type="button" className="btn-secondary" style={{ flex: 1 }}
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" className="btn-primary" style={{ flex: 2 }}
+                  disabled={pwLoading || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                >
+                  {pwLoading ? 'Saving…' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
@@ -371,6 +560,22 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         }
         .dark-mode .setting-row:hover {
           background: rgba(255, 255, 255, 0.03);
+        }
+        .btn-danger {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          padding: 10px 20px;
+          font-weight: 600;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .btn-danger:hover {
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
       `}} />
     </div>

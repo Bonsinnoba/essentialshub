@@ -231,42 +231,6 @@ export default function Checkout() {
     setStep(nextStep);
   };
 
-  // Check if user is verified before allowing checkout
-  if (user && user.role === 'customer' && parseInt(user.id_verified) === 0) {
-    return (
-      <div className="card glass animate-fade-in" style={{ padding: '60px 32px', textAlign: 'center' }}>
-        <div style={{ 
-          width: '80px', 
-          height: '80px', 
-          borderRadius: '50%', 
-          background: 'rgba(239, 68, 68, 0.1)', 
-          color: '#ef4444', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          margin: '0 auto 24px' 
-        }}>
-          <ShieldCheck size={40} />
-        </div>
-        <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px' }}>Verification Required</h2>
-        <p style={{ color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto 32px', lineHeight: '1.6' }}>
-          To ensure the safety of our premium products and comply with regional regulations, we require all customers to verify their identity with a Ghana Card before making a purchase.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-          <Link to="/" className="btn-secondary">
-            Return to Store
-          </Link>
-          <button 
-            className="btn-primary" 
-            onClick={() => navigate('/verify-id')}
-          >
-            Complete Verification
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -595,6 +559,7 @@ export default function Checkout() {
                     type="text" 
                     value={couponCode} 
                     onChange={(e) => setCouponCode(e.target.value)} 
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
                     placeholder="Enter Promo Code" 
                     className="input-premium" 
                     style={{ flex: 1, padding: '10px 14px' }} 

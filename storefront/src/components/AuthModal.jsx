@@ -36,7 +36,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     const err = params.get('social_error');
     const encodedUser = params.get('social_user');
     if (token) {
-      localStorage.setItem('ehub_token', token);
+      // Note: the auth token is already stored in an HttpOnly cookie by the server.
+      // Do NOT store it in localStorage (XSS risk). Only update the user context.
       if (encodedUser) {
         try {
           const userObj = JSON.parse(atob(encodedUser));
@@ -139,18 +140,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
           }
           setStep(3);
       } else if (step === 3) {
-          if (!formData.id_number) {
-              setError('Please enter your ID number or click "Skip for now"');
-              return;
-          }
-          if (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/i.test(formData.id_number)) {
+          // Ghana Card verification is optional — validate format only if something was entered
+          if (formData.id_number && !/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/i.test(formData.id_number)) {
               setError('Ghana card number format seems incorrect. Do not include spaces.');
               return;
           }
-          if (!formData.id_photo) {
-              setError('Please scan the face on your Ghana card or click "Skip for now"');
-              return;
-          }
+          // Advance regardless of whether card details were provided
           setStep(4);
       }
   };
@@ -248,8 +243,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     try {
       const response = await verifyUser(tempUser.id, verificationCode);
       if (response.success) {
+        // updateUser persists via secureStorage internally — no direct localStorage needed
         updateUser(tempUser);
-        localStorage.setItem('ehub_user', JSON.stringify(tempUser));
         onClose(tempUser);
         setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email', id_number: '', id_photo: '' });
         setVerificationStep(false);
