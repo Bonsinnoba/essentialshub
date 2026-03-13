@@ -121,6 +121,19 @@ export const forgotPassword = async (email, method = 'email') => {
     return await response.json();
 };
 
+export const changePassword = async (currentPassword, newPassword) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/change_password.php`, getFetchOptions({
+            method: 'POST',
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        }));
+        return await response.json();
+    } catch (error) {
+        console.error('Change password error:', error);
+        throw error;
+    }
+};
+
 export const resetPassword = async (resetData) => {
     try {
         const response = await fetch(`${API_BASE_URL}/reset_password.php`, getFetchOptions({

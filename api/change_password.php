@@ -1,0 +1,76 @@
+<?php
+// api/change_password.php
+// Allows an authenticated user to change their own password.
+
+require_once 'db.php';
+require_once 'security.php';
+
+header('Content-Type: application/json');
+checkRateLimit($pdo);
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
+    exit;
+}
+
+// Must be authenticated
+$userId = authenticate();
+
+$data = json_decode(file_get_contents('php://input'), true);
+$currentPassword = $data['current_password'] ?? '';
+$newPassword     = $data['new_password'] ?? '';
+
+if (empty($currentPassword) || empty($newPassword)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Current password and new password are required.']);
+    exit;
+}
+
+if (strlen($newPassword) < 8) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'New password must be at least 8 characters long.']);
+    exit;
+}
+
+try {
+    // Fetch stored hash
+    $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'User not found.']);
+        exit;
+    }
+
+    // Verify current password (supports legacy non-peppered hashes too)
+    if (!verifyPassword($currentPassword, $row['password_hash'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+        exit;
+    }
+
+    // Prevent reuse of the same password
+    $needsRehash = false;
+    if (verifyPassword($newPassword, $row['password_hash'], $needsRehash)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'New password cannot be the same as your current password.']);
+        exit;
+    }
+
+    // Hash and update
+    $newHash = hashPassword($newPassword);
+    $update = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+    $update->execute([$newHash, $userId]);
+
+    logger('info', 'AUTH', "User #{$userId} changed their password successfully.");
+
+    echo json_encode(['success' => true, 'message' => 'Password changed successfully.']);
+
+} catch (PDOException $e) {
+    error_log("Change password error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'An internal error occurred. Please try again.']);
+}

@@ -83,14 +83,11 @@ export default function Verification() {
 
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const token = localStorage.getItem('ehub_token');
       
       const res = await fetch(`${API_BASE}/upload_id.php`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_number: idNumber, id_photo: idPhoto })
       });
 
@@ -99,10 +96,8 @@ export default function Verification() {
       if (data.success) {
         setSuccess(true);
         addNotification('Identity verified successfully!', 'success');
-        // Update global user context
-        const updatedUser = { ...user, id_verified: 1, id_number: idNumber };
-        updateUser(updatedUser);
-        localStorage.setItem('ehub_user', JSON.stringify(updatedUser));
+        // Update global user context — secureStorage persistence handled internally by updateUser
+        updateUser({ id_verified: 1, id_number: idNumber });
         
         // Wait 2 seconds then redirect to checkout or profile
         setTimeout(() => {

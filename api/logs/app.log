@@ -101,3 +101,28 @@
 2026-03-12 09:46:25 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
 2026-03-12 09:47:45 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
 2026-03-12 09:51:03 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-13 09:21:11 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-13 09:21:29 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:21:47 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-13 09:22:30 [INFO] [STAFF] User ID: 11 status updated to Suspended by Super User
+2026-03-13 09:22:31 [INFO] [STAFF] User ID: 11 status updated to Active by Super User
+2026-03-13 09:23:07 [WARN] [STAFF] User ID: 11 was permanently deleted by Super User
+2026-03-13 09:23:43 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:23:57 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:24:27 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:26:15 [INFO] [AUTH] User #7 changed their password successfully.
+2026-03-13 09:26:54 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:27:16 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:28:23 [INFO] [AUTH] User #7 changed their password successfully.
+2026-03-13 09:28:40 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:29:04 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:29:39 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-13 09:33:40 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-13 09:37:58 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:38:06 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:41:40 [OK] [AUTH] User test_admin@example.com logged in successfully as MARKETING
+2026-03-13 09:42:25 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-13 09:42:41 [OK] [AUTH] User ivenbalika123@gmail.com logged in successfully as ADMIN
+2026-03-13 09:43:22 [OK] [AUTH] User test_super@example.com logged in successfully as SUPER
+2026-03-13 09:44:14 [INFO] [STAFF] User ID: 4 role updated to BRANCH_ADMIN by Super User
+2026-03-13 09:44:20 [INFO] [STAFF] User ID: 4 role updated to ADMIN by Super User
