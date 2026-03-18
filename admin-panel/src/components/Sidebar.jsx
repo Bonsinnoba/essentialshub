@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, Package, ShoppingCart, Users, Settings, Tag,
   LogOut, MapPin, ShieldAlert, Database, Globe, Zap, Activity, ShieldCheck,
-  Star, Bell, ShoppingBag
+  Star, Bell, ShoppingBag, RotateCcw
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -19,19 +19,21 @@ export default function Sidebar() {
     { icon: <LayoutDashboard size={20} />, label: isAccountant ? 'Finance Dash' : 'Dashboard', path: '/', visible: true },
     { icon: <Package size={20} />, label: 'Products', path: '/products', visible: !isAccountant },
     { icon: <ShoppingCart size={20} />, label: isAccountant ? 'Audits / Orders' : 'Orders', path: '/orders', visible: !isMarketing },
+    { icon: <RotateCcw size={20} />, label: 'Returns', path: '/returns', visible: !isMarketing && !isAccountant },
     { icon: <MapPin size={20} />, label: 'Store Layout', path: '/inventory', visible: !isAccountant && !isMarketing },
     { icon: <Users size={20} />, label: isAccountant ? 'Billing List' : 'Customers', path: '/customers', visible: !isMarketing },
-    { icon: <LayoutDashboard size={20} />, label: 'Hero Slider', path: '/slider', visible: !isAccountant },
+    { icon: <LayoutDashboard size={20} />, label: 'Hero Slider', path: '/slider', visible: !isAccountant && role !== 'store_manager' && role !== 'branch_admin' },
     { icon: <Tag size={20} />, label: 'Coupons', path: '/coupons', visible: !isAccountant },
     { icon: <Star size={20} />, label: 'Reviews', path: '/reviews', visible: !isMarketing },
     { icon: <ShoppingBag size={20} />, label: 'Abandoned Carts', path: '/abandoned-carts', visible: !isMarketing },
+    { icon: <Zap size={20} />, label: 'Broadcast Tool', path: '/broadcast', visible: !isAccountant },
     { icon: <Bell size={20} />, label: 'System Alerts', path: '/notifications', visible: true },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings', visible: !isMarketing },
   ].filter(item => item.visible);
 
   const superItems = [
     { icon: <ShieldAlert size={20} />, label: 'Global Overview', path: '/super/dashboard' },
-    { icon: <ShieldCheck size={20} />, label: 'ID Verification', path: '/super/verification' },
+
     { icon: <MapPin size={20} />, label: 'Warehouses', path: '/super/branches' },
     { icon: <Users size={20} />, label: 'Admin Control', path: '/super/admins' },
     { icon: <Database size={20} />, label: 'System Logs', path: '/super/logs' },
@@ -50,7 +52,7 @@ export default function Sidebar() {
           <div className="sidebar-section-label">
             {isAccountant ? 'Financial Control' : 
              isMarketing ? 'Promotion & Analytics' : 
-             role === 'branch_admin' ? 'Branch Operations' : 
+             (role === 'branch_admin' || role === 'store_manager') ? 'Store Operations' : 
              'Store Management'}
           </div>
           {navItems.map((item, idx) => (

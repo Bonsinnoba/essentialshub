@@ -2,12 +2,14 @@
 // backend/db.php
 // Secure Database Connection Configuration using PDO
 
+ob_start();
 date_default_timezone_set('GMT');
 
+// Include CORS middleware EARLY before any processing
 $config = require '.env.php';
+require_once 'cors_middleware.php';
 
 $host = $config['DB_HOST'];
-
 $user = $config['DB_USER'];
 $pass = $config['DB_PASS'];
 $db   = $config['DB_NAME'];
@@ -24,9 +26,6 @@ $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 
-    // Set CORS headers early, but after $pdo is initialized since traffic_monitor depends on it
-    require_once 'cors_middleware.php';
-
     // Global Security Middleware
     if (file_exists('security.php')) {
         require_once 'security.php';
@@ -39,13 +38,18 @@ try {
         }
         // -----------------------------
 
-        checkRateLimit($pdo);
+        // checkRateLimit($pdo);
         checkMaintenanceMode($pdo);
+
+        // Include traffic monitor now that $pdo is ready
+        if (file_exists('traffic_monitor.php')) {
+            require_once 'traffic_monitor.php';
+        }
     }
-} catch (\PDOException $e) {
+} catch (\Throwable $e) {
     // SECURITY: Don't expose database credentials/paths in production
     // UNLESS Debug Mode is explicitly enabled
-    $message = 'Internal Server Error: Database Connection Failed.';
+    $message = 'Internal Server Error: Service Unavailable.';
 
     // Check debug status if security.php was loaded, otherwise check file directly
     $debug = false;
@@ -95,3 +99,17 @@ if (!function_exists('sendResponse')) {
         exit;
     }
 }
+
+/**
+ * Custom logging to app.log
+ */
+if (!function_exists('logApp')) {
+    function logApp($level, $source, $message) {
+        $file = __DIR__ . '/logs/app.log';
+        if (!is_dir(__DIR__ . '/logs')) mkdir(__DIR__ . '/logs', 0755, true);
+        $ts = date('Y-m-d H:i:s');
+        $line = "$ts [" . strtoupper($level) . "] [" . strtoupper($source) . "] $message\n";
+        file_put_contents($file, $line, FILE_APPEND);
+    }
+}
+

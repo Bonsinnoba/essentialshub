@@ -4,7 +4,7 @@
 
 
 
-# ElectroCom Decoupled Project
+# ElectroCom: Premium Tech & Electronics Ecosystem
 
 This project is structured as a decoupled application with a PHP backend and separate React frontends for customers and administrators.
 

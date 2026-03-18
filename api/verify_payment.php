@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 
 try {
     // 1. Authenticate User
-    $userId = authenticate();
+    $userId = authenticate($pdo);
 
     // 2. Get Input Data
     $data = json_decode(file_get_contents("php://input"), true);

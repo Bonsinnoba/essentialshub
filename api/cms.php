@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // We only care if they are admin to show unpublished pages. We don't want to enforce auth
         // if a guest is viewing a published page.
         try {
-            $userId = authenticate(false); // Don't die on fail
+            $userId = authenticate($pdo, false); // Don't die on fail
             if ($userId) {
                 $userStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
                 $userStmt->execute([$userId]);

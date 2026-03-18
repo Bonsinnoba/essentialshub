@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { HelpCircle, MessageCircle, Phone, Mail, ChevronDown, Headphones, Heart, ExternalLink } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 export default function Support({ searchQuery = '' }) {
   const [openIndex, setOpenIndex] = useState(null);
+  const { siteSettings } = useSettings();
 
   const faqs = [
     { q: "How can I track my order?", a: "You can track your order in the Orders section of your dashboard. A tracking number is also sent via SMS or email once your package is dispatched." },
     { q: "Are the electronic components genuine?", a: "Yes. All components are sourced from verified suppliers. Datasheets are available on request for ICs, transistors, and modules. Dead-on-arrival (DOA) items are replaced free of charge." },
-    { q: "Do you offer bulk pricing for schools or businesses?", a: "Yes! Email us at support@electrocom.com with your parts list and quantities. We offer competitive bulk discounts for institutions, universities, and engineering firms." },
+    { q: "Do you offer bulk pricing for schools or businesses?", a: `Yes! Email us at ${siteSettings.siteEmail} with your parts list and quantities. We offer competitive bulk discounts for institutions, universities, and engineering firms.` },
     { q: "What is your return policy for components?", a: "We accept returns for DOA or damaged-on-arrival components and unopened STEM kits within 14 days. Opened component packs and ESD-damaged items are not eligible for return." },
     { q: "Do you provide datasheets or documentation?", a: "Yes. For most ICs, sensors, and modules we can provide the manufacturer datasheet on request. Contact us with the part number and we'll send it within 24 hours." },
     { q: "How do I cancel my order?", a: "Orders can be cancelled within 1 hour of placement by contacting our support team immediately. Orders already in processing cannot be cancelled." }
@@ -188,11 +190,11 @@ export default function Support({ searchQuery = '' }) {
                 <div style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5' }}>Immediate voice assistance available 9am - 6pm</div>
               </div>
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <a href="tel:0536683393" className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '12px' }}>
-                  0536683393
+                <a href={`tel:${siteSettings.phone1}`} className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                  {siteSettings.phone1}
                 </a>
-                <a href="tel:0506408074" className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '12px' }}>
-                  0506408074
+                <a href={`tel:${siteSettings.phone2}`} className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '12px' }}>
+                  {siteSettings.phone2}
                 </a>
               </div>
             </div>
@@ -216,7 +218,7 @@ export default function Support({ searchQuery = '' }) {
                 <div style={{ fontWeight: 800, fontSize: '18px', marginBottom: '6px' }}>WhatsApp Chat</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5' }}>Message us for quick replies and image sharing</div>
               </div>
-              <a href="https://wa.me/233536683393" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ 
+              <a href={`https://wa.me/${siteSettings.whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ 
                 width: '100%', 
                 borderRadius: '14px', 
                 textDecoration: 'none', 
@@ -254,8 +256,8 @@ export default function Support({ searchQuery = '' }) {
                 <div style={{ fontWeight: 800, fontSize: '18px', marginBottom: '6px' }}>Email Inquiry</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.5' }}>For detailed requests, returns or order queries</div>
               </div>
-              <a href="mailto:support@electrocom.com" className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px' }}>
-                support@electrocom.com
+              <a href={`mailto:${siteSettings.siteEmail}`} className="btn-secondary" style={{ width: '100%', borderRadius: '14px', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px' }}>
+                {siteSettings.siteEmail}
               </a>
             </div>
           </div>

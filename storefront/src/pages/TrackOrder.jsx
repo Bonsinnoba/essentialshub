@@ -4,6 +4,7 @@ import { trackOrder } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
 import styles from './TrackOrder.module.css';
 
+
 export default function TrackOrder() {
   const [orderId, setOrderId] = useState('');
   const [email, setEmail] = useState('');
@@ -198,7 +199,16 @@ export default function TrackOrder() {
                     <div key={idx} style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '12px', background: 'var(--bg-surface-secondary)', borderRadius: '12px' }}>
                       <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: 'white', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          <img 
+                            src={item.image_url} 
+                            alt={item.name} 
+                            style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              objectFit: 'contain', 
+                              borderRadius: '8px' 
+                            }} 
+                          />
                         ) : (
                           <Package size={24} color="var(--text-muted)" />
                         )}

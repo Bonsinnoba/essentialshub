@@ -4,6 +4,9 @@ require_once 'db.php';
 require_once 'security.php';
 require_once 'notifications.php';
 
+// Rate limit: 4 password reset attempts per IP per hour
+checkRateLimit($pdo, 4, 3600);
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

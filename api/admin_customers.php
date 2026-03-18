@@ -21,7 +21,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Granular Role Access
 if ($method === 'GET') {
     // Basic audit: Admins, Branch Admins, Accountants, Super
-    requireRole(array_merge(RBAC_ADMIN_GROUP, RBAC_SUPER_GROUP), $pdo);
+    requireRole(RBAC_ALL_ADMINS, $pdo);
 } elseif ($method === 'POST') {
     // Moderation: Admins and Branch Admins only
     requireRole(['super', 'admin', 'branch_admin'], $pdo);
@@ -29,8 +29,16 @@ if ($method === 'GET') {
 
 if ($method === 'GET') {
     try {
+        $filterSql = "";
+        $params = [];
+        
+        // Restriction: managers only see 'customer' role users for data privacy
+        if ($role === 'store_manager' || $role === 'branch_admin') {
+            $filterSql = " WHERE u.role = 'customer' ";
+        }
+
         // Fetch all users with basic order summary and branch name
-        $stmt = $pdo->query("
+        $stmt = $pdo->prepare("
             SELECT 
                 u.*, 
                 sb.name as branch_name,
@@ -38,21 +46,22 @@ if ($method === 'GET') {
                 (SELECT SUM(total_amount) FROM orders WHERE user_id = u.id) as total_spent
             FROM users u 
             LEFT JOIN store_branches sb ON u.branch_id = sb.id
+            $filterSql
             ORDER BY u.created_at DESC
         ");
+        $stmt->execute($params);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Security & Performance: Remove sensitive/heavy data
         foreach ($users as &$user) {
             unset($user['password_hash']);
-            if (isset($user['id_photo'])) unset($user['id_photo']);
             if (isset($user['profile_image'])) unset($user['profile_image']);
         }
 
         echo json_encode(['success' => true, 'data' => $users]);
     } catch (PDOException $e) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } elseif ($method === 'POST') {
     $content = trim(file_get_contents("php://input"));
@@ -63,7 +72,7 @@ if ($method === 'GET') {
         $id = $decoded['id'] ?? null;
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
+            echo json_encode(['success' => false, 'message' => 'User ID is required']);
             exit;
         }
 
@@ -76,7 +85,7 @@ if ($method === 'GET') {
             echo json_encode(['success' => true]);
         } catch (PDOException $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     } elseif ($action === 'toggle_status') {
         $id = $decoded['id'] ?? null;
@@ -84,7 +93,7 @@ if ($method === 'GET') {
 
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
+            echo json_encode(['success' => false, 'message' => 'User ID is required']);
             exit;
         }
 
@@ -98,7 +107,7 @@ if ($method === 'GET') {
             echo json_encode(['success' => true, 'status' => $newStatus]);
         } catch (PDOException $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     } elseif ($action === 'set_role') {
         $id = $decoded['id'] ?? null;
@@ -106,7 +115,7 @@ if ($method === 'GET') {
 
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
+            echo json_encode(['success' => false, 'message' => 'User ID is required']);
             exit;
         }
 
@@ -118,7 +127,7 @@ if ($method === 'GET') {
 
             if (!$targetUser) {
                 http_response_code(404);
-                echo json_encode(['success' => false, 'error' => 'User not found']);
+                echo json_encode(['success' => false, 'message' => 'User not found']);
                 exit;
             }
 
@@ -128,7 +137,7 @@ if ($method === 'GET') {
             // or assign the super admin role to someone else.
             if (($currentRole === 'super' || $newRole === 'super') && $role !== 'super') {
                 http_response_code(403);
-                echo json_encode(['success' => false, 'error' => 'Permission denied: Super admin privileges required.']);
+                echo json_encode(['success' => false, 'message' => 'Permission denied: Super admin privileges required.']);
                 exit;
             }
 
@@ -140,61 +149,16 @@ if ($method === 'GET') {
             echo json_encode(['success' => true, 'role' => $newRole]);
         } catch (PDOException $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
-    } elseif ($action === 'approve_verification') {
-        $id = $decoded['id'] ?? null;
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
-            exit;
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
 
-        try {
-            $stmt = $pdo->prepare("UPDATE users SET id_verified = 1 WHERE id = ?");
-            $stmt->execute([$id]);
-
-            // Notify user
-            $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Identity Verified', 'Your Ghana Card verification has been approved. You can now place orders.', 'security')")
-                ->execute([$id]);
-
-            logger('info', 'STAFF', "User ID: {$id} identity verification APPROVED by {$userName}");
-            echo json_encode(['success' => true]);
-        } catch (PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
-    } elseif ($action === 'reject_verification') {
-        $id = $decoded['id'] ?? null;
-        $reason = $decoded['reason'] ?? 'Provided information was unclear or invalid.';
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
-            exit;
-        }
-
-        try {
-            // Reset verification data so they can try again
-            $stmt = $pdo->prepare("UPDATE users SET id_verified = 0, id_number = NULL, id_photo = NULL WHERE id = ?");
-            $stmt->execute([$id]);
-
-            // Notify user
-            $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Identity Verification Rejected', ?, 'security')")
-                ->execute([$id, "Your Ghana Card verification was rejected. Reason: {$reason}. Please try again with clear information."]);
-
-            logger('warn', 'STAFF', "User ID: {$id} identity verification REJECTED by {$userName}. Reason: {$reason}");
-            echo json_encode(['success' => true]);
-        } catch (PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        }
     } elseif ($action === 'set_branch') {
         $id = $decoded['id'] ?? null;
         $branch_id = $decoded['branch_id'] ?? null;
 
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'User ID is required']);
+            echo json_encode(['success' => false, 'message' => 'User ID is required']);
             exit;
         }
 
@@ -207,10 +171,10 @@ if ($method === 'GET') {
             echo json_encode(['success' => true]);
         } catch (PDOException $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 } else {
     http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    echo json_encode(['success' => false, 'message' => 'Method not allowed']);
 }

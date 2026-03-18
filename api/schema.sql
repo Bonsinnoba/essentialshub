@@ -10,20 +10,22 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     address TEXT,
-    role ENUM('customer', 'admin') DEFAULT 'customer',
+    role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'accountant', 'super') DEFAULT 'customer',
     level INT DEFAULT 1,
     level_name VARCHAR(50) DEFAULT 'Starter',
     avatar_text VARCHAR(10) DEFAULT 'U',
     profile_image LONGTEXT, -- To store Base64 images for now
-    id_number VARCHAR(50) DEFAULT NULL,
-    id_photo LONGTEXT DEFAULT NULL, -- Base64 scan of the Ghana card
-    id_verified TINYINT(1) DEFAULT 0,
-    id_verified_at DATETIME DEFAULT NULL,
-    id_verification_reason VARCHAR(255) DEFAULT NULL,
-    id_verifier_id INT DEFAULT NULL,
     wallet_balance DECIMAL(10, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    email_notif BOOLEAN DEFAULT TRUE,
+    push_notif BOOLEAN DEFAULT TRUE,
+    sms_tracking BOOLEAN DEFAULT TRUE,
+    two_factor_enabled BOOLEAN DEFAULT FALSE,
+    two_factor_secret VARCHAR(255) DEFAULT NULL,
+    loyalty_points INT DEFAULT 0,
+    auth_provider VARCHAR(50) DEFAULT 'local',
+    auth_provider_id VARCHAR(255) DEFAULT NULL
 );
 
 -- Create Products table with categorization and color support
@@ -78,7 +80,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    type ENUM('order', 'promo', 'security', 'info') DEFAULT 'info',
+    type ENUM('order', 'promo', 'security', 'info', 'system') DEFAULT 'info',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -181,4 +183,20 @@ CREATE TABLE IF NOT EXISTS cms_pages (
     is_published BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Saved Payment Methods table
+CREATE TABLE IF NOT EXISTS saved_payment_methods (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type ENUM('visa', 'paypal', 'momo') NOT NULL,
+    label VARCHAR(50), -- e.g. "Visa Card", "MTN Momo"
+    last4 VARCHAR(4),
+    number VARCHAR(20), -- For mobile money
+    holder VARCHAR(100),
+    expiry VARCHAR(10),
+    token VARCHAR(255), -- For payment gateway reference/tokenization
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

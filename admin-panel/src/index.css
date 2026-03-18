@@ -2,6 +2,7 @@
     --primary-blue: #1e3a8a;
     --primary-blue-rgb: 30, 58, 138;
     --accent-blue: #3b82f6;
+    --accent-blue-rgb: 59, 130, 246;
     --bg-main: #f8fafc;
     --bg-surface: #ffffff;
     --bg-surface-secondary: #f1f5f9;
@@ -54,8 +55,6 @@ strong {
     --border-light: rgba(255, 255, 255, 0.1);
 
     /* Adjust primaries for dark mode contrast */
-    --primary-blue: #3b82f6;
-    /* Lighter blue for dark mode */
     --accent-blue: #60a5fa;
 
     /* Semantic Status Backgrounds (Dark Mode) */
@@ -257,7 +256,7 @@ body {
 
 .sidebar-nav-link:hover {
     color: var(--primary-blue);
-    background: rgba(30, 58, 138, 0.06);
+    background: rgba(var(--primary-blue-rgb), 0.06);
 }
 
 .sidebar-nav-link.active {
@@ -648,7 +647,7 @@ body {
 
 .input-field:focus {
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--accent-blue-rgb), 0.1);
 }
 
 .btn-secondary {
@@ -690,13 +689,13 @@ body {
 .dark-mode .btn-primary {
     background: var(--primary-blue);
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.25);
     border-color: rgba(255, 255, 255, 0.1);
 }
 
 .dark-mode .btn-primary:hover {
     background: var(--accent-blue);
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 6px 16px rgba(var(--accent-blue-rgb), 0.4);
     transform: translateY(-2px);
 }
 
@@ -729,4 +728,26 @@ body {
 .dark-mode .btn svg {
     color: inherit !important;
     stroke: currentColor;
+}
+
+/* Theme Overrides - Defined last to win over dark-mode reset if needed */
+.theme-red {
+    --primary-blue: #dc2626;
+    --primary-blue-rgb: 220, 38, 38;
+    --accent-blue: #ef4444;
+    --accent-blue-rgb: 239, 68, 68;
+}
+
+.theme-green {
+    --primary-blue: #16a34a;
+    --primary-blue-rgb: 22, 163, 74;
+    --accent-blue: #22c55e;
+    --accent-blue-rgb: 34, 197, 94;
+}
+
+.theme-purple {
+    --primary-blue: #7c3aed;
+    --primary-blue-rgb: 124, 58, 237;
+    --accent-blue: #8b5cf6;
+    --accent-blue-rgb: 139, 92, 246;
 }

@@ -13,11 +13,13 @@ import CouponManager from './pages/CouponManager';
 import SystemNotifications from './pages/SystemNotifications';
 import ReviewManager from './pages/ReviewManager';
 import AbandonedCartManager from './pages/AbandonedCartManager';
+import BroadcastManager from './pages/BroadcastManager';
+import ReturnManager from './pages/ReturnManager';
 import SuperDashboard from './pages/super-user/SuperDashboard';
 import BranchManagement from './pages/super-user/BranchManagement';
 import AdminControl from './pages/super-user/AdminControl';
 import SystemLogs from './pages/super-user/SystemLogs';
-import VerificationManager from './pages/super-user/VerificationManager';
+
 import GlobalSettings from './pages/super-user/GlobalSettings';
 import TrafficControl from './pages/super-user/TrafficControl';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -26,7 +28,7 @@ import { X } from 'lucide-react';
 
 // ─── Toast Overlay ────────────────────────────────────────────────────────────
 const AdminToasts = () => {
-  const { notifications, deleteNotification } = useNotifications();
+  const { notifications, deleteNotification, toasts, removeToast } = useNotifications();
   
   return (
     <div style={{
@@ -63,6 +65,45 @@ const AdminToasts = () => {
           <div style={{ flex: 1, fontWeight: 700, fontSize: '14px' }}>{notif.text}</div>
           <button 
             onClick={() => deleteNotification(notif.id)}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: 'inherit', 
+              cursor: 'pointer', 
+              opacity: 0.6,
+              display: 'flex',
+              padding: '4px'
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+      
+      {toasts.map(toast => (
+        <div key={toast.id} className="glass animate-fade-in" style={{
+          padding: '16px 20px',
+          borderRadius: '12px',
+          background: toast.type === 'error' ? 'var(--danger-bg)' : 
+                      toast.type === 'success' ? 'var(--success-bg)' : 
+                      'var(--info-bg)',
+          border: `1px solid ${toast.type === 'error' ? 'var(--danger)' : 
+                               toast.type === 'success' ? 'var(--success)' : 
+                               'var(--primary-blue)'}`,
+          color: toast.type === 'error' ? 'var(--danger)' : 
+                 toast.type === 'success' ? 'var(--success)' : 
+                 'var(--primary-blue)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+          minWidth: '300px',
+          maxWidth: '450px',
+          pointerEvents: 'auto'
+        }}>
+          <div style={{ flex: 1, fontWeight: 700, fontSize: '14px' }}>{toast.text}</div>
+          <button 
+            onClick={() => removeToast(toast.id)}
             style={{ 
               background: 'transparent', 
               border: 'none', 
@@ -158,6 +199,10 @@ function App() {
     return saved !== null ? JSON.parse(saved) : false;
   });
 
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('admin_theme') || 'blue';
+  });
+
   useEffect(() => {
     if (isDarkMode) {
       document.body.classList.add('dark-mode');
@@ -167,9 +212,21 @@ function App() {
   }, [isDarkMode]);
 
   useEffect(() => {
+    // Remove existing theme classes
+    document.body.classList.remove('theme-red', 'theme-green', 'theme-purple');
+    // Add new one if not blue
+    if (theme !== 'blue') {
+      document.body.classList.add(`theme-${theme}`);
+    }
+  }, [theme]);
+
+  useEffect(() => {
     const handleStorageChange = () => {
       const saved = localStorage.getItem('darkMode');
       if (saved !== null) setIsDarkMode(JSON.parse(saved));
+      
+      const savedTheme = localStorage.getItem('admin_theme');
+      if (savedTheme) setTheme(savedTheme);
     };
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('themeChange', handleStorageChange);
@@ -206,13 +263,15 @@ function App() {
             <Route path="/notifications" element={<ProtectedLayout><SystemNotifications /></ProtectedLayout>} />
             <Route path="/reviews" element={<ProtectedLayout><ReviewManager /></ProtectedLayout>} />
             <Route path="/abandoned-carts" element={<ProtectedLayout><AbandonedCartManager /></ProtectedLayout>} />
+            <Route path="/broadcast" element={<ProtectedLayout><BroadcastManager /></ProtectedLayout>} />
+            <Route path="/returns" element={<ProtectedLayout><ReturnManager /></ProtectedLayout>} />
             <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
 
             {/* Super Admin Routes */}
             <Route path="/super/dashboard" element={<ProtectedLayout requireSuper><SuperDashboard /></ProtectedLayout>} />
             <Route path="/super/branches" element={<ProtectedLayout requireSuper><BranchManagement /></ProtectedLayout>} />
             <Route path="/super/admins" element={<ProtectedLayout requireSuper><AdminControl /></ProtectedLayout>} />
-            <Route path="/super/verification" element={<ProtectedLayout requireSuper><VerificationManager /></ProtectedLayout>} />
+
             <Route path="/super/logs" element={<ProtectedLayout requireSuper><SystemLogs /></ProtectedLayout>} />
             <Route path="/super/traffic" element={<ProtectedLayout requireSuper><TrafficControl /></ProtectedLayout>} />
             <Route path="/super/settings" element={<ProtectedLayout requireSuper><GlobalSettings /></ProtectedLayout>} />

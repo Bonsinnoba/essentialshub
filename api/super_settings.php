@@ -14,9 +14,19 @@ require 'db.php';
 require 'security.php';
 header('Content-Type: application/json');
 
-// Authenticate and Require Super Role
+// Authenticate and Require Roles
 try {
-    $userId = requireRole('super', $pdo);
+    $userId = authenticate($pdo);
+    $role = getUserRole($userId, $pdo);
+    
+    $method = $_SERVER['REQUEST_METHOD'];
+    if ($method === 'GET') {
+        // All admins can read settings (e.g. for maintenance check)
+        requireRole(RBAC_ALL_ADMINS, $pdo);
+    } else {
+        // Only super can modify
+        requireRole('super', $pdo);
+    }
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -43,6 +53,9 @@ $DEFAULTS = [
     'apiRateLimit'      => 100,
     'debugMode'         => false,
     'backupFrequency'   => 'daily',
+    'phone1'            => '0536683393',
+    'phone2'            => '0506408074',
+    'whatsapp'          => '233536683393',
 ];
 
 $method = $_SERVER['REQUEST_METHOD'];

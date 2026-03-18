@@ -6,16 +6,7 @@ require_once 'security.php';
 header('Content-Type: application/json');
 
 // Only Admins/Super Admins
-$userId = authenticate();
-$userStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
-$userStmt->execute([$userId]);
-$user = $userStmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$user || ($user['role'] !== 'admin' && $user['role'] !== 'super')) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Admins only']);
-    exit;
-}
+requireRole(RBAC_ALL_ADMINS, $pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
@@ -61,11 +52,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ");
         $data['top_products'] = $topProdsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // 7. Inventory Status Breakdown
+        $invStmt = $pdo->query("
+            SELECT 
+                SUM(CASE WHEN stock_quantity > 10 THEN 1 ELSE 0 END) as optimal,
+                SUM(CASE WHEN stock_quantity > 0 AND stock_quantity <= 10 THEN 1 ELSE 0 END) as low,
+                SUM(CASE WHEN stock_quantity = 0 THEN 1 ELSE 0 END) as out_of_stock
+            FROM products
+        ");
+        $data['inventory_status'] = $invStmt->fetch(PDO::FETCH_ASSOC);
+
+        // 8. Strategic Insights
+        // a. Revenue Peak
+        $peakRevenue = 0;
+        foreach ($data['revenue_chart'] as $day) {
+            if ($day['daily_revenue'] > $peakRevenue) {
+                $peakRevenue = $day['daily_revenue'];
+            }
+        }
+        $data['strategic_insights']['revenue_peak'] = $peakRevenue;
+
+        // b. Fulfillment Efficiency (Avg time to ship in hours)
+        $effStmt = $pdo->query("
+            SELECT AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) 
+            FROM orders 
+            WHERE status IN ('shipped', 'delivered')
+        ");
+        $data['strategic_insights']['ship_efficiency'] = round((float)$effStmt->fetchColumn(), 1) ?: 0;
+
         echo json_encode(['success' => true, 'data' => $data]);
     } catch (Exception $e) {
         error_log("Analytics fetch error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to fetch analytics data']);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch analytics data']);
     }
     exit;
 } else {

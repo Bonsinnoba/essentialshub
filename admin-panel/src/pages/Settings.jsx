@@ -10,6 +10,7 @@ export default function Settings() {
   });
   const [orderAlerts, setOrderAlerts] = useState(true);
   const [stockAlerts, setStockAlerts] = useState(true);
+  const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'blue');
   const [saveStatus, setSaveStatus] = useState('');
 
   const user = JSON.parse(localStorage.getItem('ehub_user') || '{}');
@@ -33,6 +34,13 @@ export default function Settings() {
     
     // Notify other components (like App.jsx) about the change immediately
     window.dispatchEvent(new Event('themeChange'));
+  };
+
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('admin_theme', newTheme);
+    window.dispatchEvent(new Event('themeChange'));
+    addToast(`Theme successfully updated`, 'success');
   };
 
   return (
@@ -124,17 +132,40 @@ export default function Settings() {
                 position: 'relative', 
                 transition: 'all 0.3s'
               }}>
-                <div style={{ 
-                  position: 'absolute', 
-                  right: darkMode ? '2px' : 'auto',
-                  left: darkMode ? 'auto' : '2px',
-                  top: '2px', 
-                  width: '18px', 
-                  height: '18px', 
-                  background: 'white', 
-                  borderRadius: '50%',
-                  transition: 'all 0.3s'
-                }} />
+              </div>
+            </div>
+
+            <div style={{ padding: '12px', borderRadius: '12px', background: 'var(--bg-surface-secondary)' }}>
+              <label style={{ display: 'block', marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>Brand Theme</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {[
+                  { id: 'blue', color: '#1e3a8a', label: 'Classic Blue' },
+                  { id: 'red', color: '#dc2626', label: 'Vibrant Red' },
+                  { id: 'green', color: '#16a34a', label: 'Nature Green' },
+                  { id: 'purple', color: '#7c3aed', label: 'Royal Purple' }
+                ].map((t) => (
+                  <div 
+                    key={t.id}
+                    onClick={() => changeTheme(t.id)}
+                    style={{ 
+                      width: '44px', 
+                      height: '44px', 
+                      borderRadius: '12px', 
+                      background: t.color, 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: theme === t.id ? '3px solid var(--text-main)' : '2px solid transparent',
+                      transition: 'all 0.2s',
+                      boxShadow: theme === t.id ? '0 0 15px rgba(0,0,0,0.2)' : 'none',
+                      transform: theme === t.id ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                    title={t.label}
+                  >
+                    {theme === t.id && <Check size={20} color="white" />}
+                  </div>
+                ))}
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderRadius: '12px', background: 'var(--bg-surface-secondary)', opacity: 0.6 }}>

@@ -224,6 +224,15 @@ export default function GlobalSettings() {
               label="Allow New Registrations"
               description="When disabled, the sign-up page will return a 403 error."
             />
+            <Field label="Phone Number 1" description="Primary contact number shown on the storefront.">
+              <input style={inputStyle} value={settings.phone1} onChange={setVal('phone1')} />
+            </Field>
+            <Field label="Phone Number 2" description="Secondary contact number shown on the storefront.">
+              <input style={inputStyle} value={settings.phone2} onChange={setVal('phone2')} />
+            </Field>
+            <Field label="WhatsApp Number" description="Used for direct WhatsApp chat links. Use international format (e.g. 233536683393).">
+              <input style={inputStyle} value={settings.whatsapp} onChange={setVal('whatsapp')} />
+            </Field>
           </>
         )}
 

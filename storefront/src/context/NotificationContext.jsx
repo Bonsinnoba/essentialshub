@@ -16,7 +16,21 @@ export const NotificationProvider = ({ children }) => {
   const { user } = useUser();
 
   const [notifications, setNotifications] = useState([]);
+  const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const addToast = (text, type = 'info') => {
+    const id = Date.now();
+    const newToast = { id, text, type };
+    setToasts(prev => [...prev, newToast]);
+    setTimeout(() => {
+      removeToast(id);
+    }, 4000);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const fetchServerNotifications = async () => {
     if (!user) return;
@@ -99,7 +113,18 @@ export const NotificationProvider = ({ children }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications }}>
+    <NotificationContext.Provider value={{ 
+      notifications, 
+      unreadCount, 
+      addNotification, 
+      markAsRead, 
+      markAllAsRead, 
+      deleteNotification, 
+      clearAllNotifications,
+      toasts,
+      addToast,
+      removeToast
+    }}>
       {children}
     </NotificationContext.Provider>
   );

@@ -6,6 +6,17 @@ import { Filter as FilterIcon } from 'lucide-react';
 
 export default function Shop({ products, onProductClick, searchQuery, loading }) {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(9);
+  const [filters, setFilters] = useState({
+    category: 'All',
+    maxPrice: 2000, // Initial high default
+    minRating: 0
+  });
+
+  // Reset visible count when filters or search change
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [filters, searchQuery]);
 
   // Dynamically extract categories from the product list
   const availableCategories = useMemo(() => {
@@ -23,12 +34,6 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
     return Math.max(...prices, 1); // Ensure at least 1 to avoid slider errors
   }, [products]);
 
-  const [filters, setFilters] = useState({
-    category: 'All',
-    maxPrice: 2000, // Initial high default
-    minRating: 0
-  });
-
   // Sync maxPrice filter default ONLY on initial load or if maxPrice is currently at 0 (unset)
   useEffect(() => {
     if (products.length > 0 && filters.maxPrice === 2000) {
@@ -37,7 +42,7 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
   }, [maxPriceInRange, products.length]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    const filtered = products.filter(p => {
       const query = searchQuery.toLowerCase();
       const name = String(p.name || '').toLowerCase();
       const category = String(p.category || '').toLowerCase();
@@ -56,7 +61,12 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
       
       return matchSearch && matchCategory && matchPrice && matchRating;
     });
+    return filtered;
   }, [filters, searchQuery, products]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
 
   const resetFilters = () => {
     setFilters({
@@ -163,7 +173,7 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
               gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
               gap: '24px',
             }}>
-              {filteredProducts.map((p, idx) => (
+              {displayedProducts.map((p, idx) => (
                 <div 
                   key={p.id} 
                   className="animate-slide-up" 
@@ -183,6 +193,27 @@ export default function Shop({ products, onProductClick, searchQuery, loading })
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {visibleCount < filteredProducts.length && !loading && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '48px', marginBottom: '24px' }}>
+              <button 
+                className="btn-primary" 
+                onClick={() => setVisibleCount(prev => prev + 9)}
+                style={{ 
+                  padding: '14px 48px', 
+                  borderRadius: '100px', 
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  boxShadow: '0 8px 24px rgba(var(--primary-rgb), 0.2)',
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                View More
+              </button>
             </div>
           )}
         </div>

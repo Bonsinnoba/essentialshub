@@ -1,8 +1,11 @@
 import React from 'react';
-import { X, Star, Heart } from 'lucide-react';
+import { X, Star, Heart, ShoppingCart } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useUser } from '../context/UserContext';
+import { useCart } from '../context/CartContext';
+import { useNotifications } from '../context/NotificationContext';
+
 
 export default function ProductCard({ id, name, price, image, rating, onClick, onRemove }) {
   const { formatPrice } = useSettings();
@@ -11,6 +14,8 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
   // Use hooks for wishlist and user state
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { user, openAuthModal } = useUser();
+  const { addToCart } = useCart();
+  const { addNotification } = useNotifications();
   const inWishlist = isInWishlist(id); 
 
   const handleWishlistClick = (e) => {
@@ -20,6 +25,16 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
       return;
     }
     toggleWishlist({ id, name, price, image, rating });
+  };
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    if (!user) {
+      if (openAuthModal) openAuthModal('signin');
+      return;
+    }
+    addToCart({ id, name, price, image, rating });
+    addNotification(`${name} added to cart`, 'success');
   };
 
   return (
@@ -38,6 +53,18 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
           />
         </button>
       )}
+
+      {/* Add to Cart Button - Shown on all cards if onRemove is NOT present (Shop view) */}
+      {!onRemove && (
+        <button 
+          onClick={handleAddToCart}
+          className="add-to-cart-btn"
+          title="Add to cart"
+        >
+          <ShoppingCart size={18} />
+        </button>
+      )}
+
       
       {onRemove && (
         <button 
@@ -52,11 +79,11 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
         </button>
       )}
 
-      {image ? (
-        <img src={image} className="product-image" alt={name} />
-      ) : (
-        <div className="product-image" style={{ background: 'var(--bg-surface-secondary)' }}></div>
-      )}
+      <img 
+        src={image} 
+        alt={name} 
+        className="product-image" 
+      />
 
       <div className="product-info">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -70,4 +97,4 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
       </div>
     </div>
   );
-}
+}

@@ -6,6 +6,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useUser } from '../context/UserContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
+
 export default function Navbar({ 
   onLoginClick, 
   onMapClick, 
@@ -24,7 +25,7 @@ export default function Navbar({
   const location = useLocation();
   const navigate = useNavigate();
   const { cartCount } = useCart();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, addNotification } = useNotifications();
   const { user } = useUser();
 
   const pages = [
@@ -152,7 +153,7 @@ export default function Navbar({
                       setIsSearchOpen(false);
                     }}
                   >
-                    <img src={product.image} alt="" className="result-thumb" />
+                    <img src={product.image} alt="" className="result-thumb" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '10px' }} />
                     <div className="result-info">
                       <span className="result-name">{product.name}</span>
                       <span className="result-meta">${product.price} • View Details</span>
@@ -197,7 +198,17 @@ export default function Navbar({
         </div>
         
         {/* Mobile Cart Link */}
-        <Link to="/cart" className="sidebar-icon btn" style={{ position: 'relative' }}>
+        <Link 
+          to={user ? "/cart" : "#"} 
+          onClick={(e) => {
+            if (!user) {
+              e.preventDefault();
+              onLoginClick('Please login to view your cart');
+            }
+          }}
+          className="sidebar-icon btn" 
+          style={{ position: 'relative' }}
+        >
           <ShoppingCart size={20} />
           {cartCount > 0 && (
             <span key={cartCount} className="badge-premium badge-cart">
@@ -205,7 +216,7 @@ export default function Navbar({
             </span>
           )}
         </Link>
-
+        
         <div className="sidebar-icon btn" id="theme-toggle" onClick={onThemeToggle}>
           {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
         </div>
@@ -241,13 +252,19 @@ export default function Navbar({
               fontSize: '13px',
               border: '2px solid white',
               flexShrink: 0,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              position: 'relative'
             }}>
               {user.profileImage ? (
                 <img 
                   src={user.profileImage} 
                   alt={user.name} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover', 
+                    borderRadius: '50%' 
+                  }} 
                 />
               ) : (
                 user.avatar || user.name?.charAt(0) || 'U'

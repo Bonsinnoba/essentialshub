@@ -12,9 +12,6 @@ export const WalletProvider = ({ children }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Mock payment methods for visual demo
-  const [paymentMethods, setPaymentMethods] = useState([]);
-
   const refreshWallet = async () => {
     if (!user) return;
     try {
@@ -33,7 +30,6 @@ export const WalletProvider = ({ children }) => {
   }, [user]);
 
   const addTransaction = (transaction) => {
-    // Optimistic or manual add (mostly deprecated by backend fetch)
     setTransactions(prev => [transaction, ...prev]);
   };
 
@@ -58,19 +54,11 @@ export const WalletProvider = ({ children }) => {
     }
   };
 
-  const topUpBalance = async (amount) => {
-      // Deprecated: used for mock only.
-      // In real flow, we use verifyTopUp with reference.
-      console.warn("topUpBalance(amount) is deprecated. Use verifyTopUp(reference).");
-  };
-
   return (
     <WalletContext.Provider value={{ 
       balance, 
       transactions, 
-      paymentMethods,
       deductBalance,
-      topUpBalance, 
       verifyTopUp,
       refreshWallet,
       addTransaction,

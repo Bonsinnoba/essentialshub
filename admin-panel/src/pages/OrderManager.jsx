@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, X, MapPin, User, Package, Calendar } from 'lucide-react';
-import { fetchOrders, updateOrderStatus } from '../services/api';
+import { Eye, Truck, CheckCircle, Clock, X, MapPin, User, Package, Calendar, Mail, ShieldCheck, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { fetchOrders, updateOrderStatus, resendReceipt, verifyDelivery } from '../services/api';
 
 export default function OrderManager() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [liveStats, setLiveStats] = useState({ review: 0, shipped: 0, deliveredToday: 0 });
+  const [otp, setOtp] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const navigate = useNavigate();
   
   const user = JSON.parse(localStorage.getItem('ehub_user') || '{}');
   const isAccountant = user.role === 'accountant';
@@ -59,6 +62,28 @@ export default function OrderManager() {
         }
     } catch (error) {
         alert("Failed to update status");
+    }
+  };
+
+  const handleVerifyDelivery = async () => {
+    if (!otp) return alert('Please enter the delivery code');
+    setVerifying(true);
+    try {
+      const res = await verifyDelivery(selectedOrder.id, otp);
+      if (res.success) {
+        alert(res.message);
+        setOtp('');
+        // Reload orders or update local state
+        if (selectedOrder) {
+          setSelectedOrder({ ...selectedOrder, status: 'Delivered' });
+        }
+      } else {
+        alert(res.error);
+      }
+    } catch (err) {
+      alert('Connection error');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -149,8 +174,8 @@ export default function OrderManager() {
                       borderRadius: '100px', 
                       fontSize: '11px', 
                       fontWeight: 700,
-                      background: o.status === 'Delivered' ? 'var(--success-bg)' : o.status === 'Shipped' ? 'var(--info-bg)' : 'var(--warning-bg)',
-                      color: o.status === 'Delivered' ? 'var(--success)' : o.status === 'Shipped' ? 'var(--accent-blue)' : 'var(--warning)'
+                      background: o.status.toLowerCase() === 'delivered' ? 'var(--success-bg)' : o.status.toLowerCase() === 'shipped' ? 'var(--info-bg)' : 'var(--warning-bg)',
+                      color: o.status.toLowerCase() === 'delivered' ? 'var(--success)' : o.status.toLowerCase() === 'shipped' ? 'var(--accent-blue)' : 'var(--warning)'
                     }}>
                       {o.status}
                     </span>
@@ -193,12 +218,25 @@ export default function OrderManager() {
                 <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>Order Details</h2>
                 <span style={{ fontSize: '12px', color: 'var(--primary-blue)', fontWeight: 700 }}>{selectedOrder.id}</span>
               </div>
-              <button 
+                <button 
                 onClick={() => window.open(`http://localhost:8000/invoice.php?order_id=${selectedOrder.id}`, '_blank')}
                 className="btn" 
                 style={{ padding: '6px 12px', fontSize: '11px', background: 'var(--primary-blue)', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 🖨️ Print Invoice
+              </button>
+                <button 
+                onClick={async () => {
+                  if(window.confirm('Resend receipt to customer?')) {
+                    const res = await resendReceipt(selectedOrder.id);
+                    if(res.success) alert('Receipt re-sent!');
+                    else alert('Failed: ' + res.error);
+                  }
+                }}
+                className="btn" 
+                style={{ padding: '6px 12px', fontSize: '11px', background: 'var(--bg-surface-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Mail size={14} /> Resend E-Receipt
               </button>
             </div>
             <button onClick={() => setSelectedOrder(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -268,7 +306,7 @@ export default function OrderManager() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <button 
                   onClick={() => handleUpdateStatus(selectedOrder.id, 'Shipped')}
-                  disabled={selectedOrder.status === 'Shipped' || isAccountant}
+                  disabled={selectedOrder.status.toLowerCase() === 'shipped' || isAccountant}
                   className="btn" 
                   style={{ 
                     background: 'var(--info-bg)', 
@@ -286,7 +324,7 @@ export default function OrderManager() {
                 </button>
                 <button 
                   onClick={() => handleUpdateStatus(selectedOrder.id, 'Delivered')}
-                  disabled={selectedOrder.status === 'Delivered' || isAccountant}
+                  disabled={selectedOrder.status.toLowerCase() === 'delivered' || isAccountant}
                   className="btn" 
                   style={{ 
                     background: 'var(--success-bg)', 
@@ -303,7 +341,64 @@ export default function OrderManager() {
                   <CheckCircle size={14} /> Mark Delivered
                 </button>
               </div>
+              
+              {selectedOrder.status.toLowerCase() === 'delivered' && !isMarketing && !isAccountant && (
+                <button 
+                  onClick={() => navigate(`/returns?orderId=${selectedOrder.id}`)}
+                  className="btn" 
+                  style={{ 
+                    marginTop: '12px',
+                    width: '100%',
+                    background: 'rgba(var(--primary-blue-rgb), 0.1)', 
+                    color: 'var(--primary-blue)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    justifyContent: 'center',
+                    padding: '12px',
+                    fontWeight: 700
+                  }}
+                >
+                  <RotateCcw size={16} /> Process Return Items
+                </button>
+              )}
             </section>
+
+            {selectedOrder.status.toLowerCase() === 'shipped' && (
+              <section className="animate-fade-in">
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={16} /> Delivery Verification
+                </h3>
+                <div className="card" style={{ 
+                  padding: '20px', 
+                  background: 'rgba(234, 179, 8, 0.05)', 
+                  border: '1px solid var(--warning)',
+                  borderRadius: '12px'
+                }}>
+                   <div style={{ display: 'flex', gap: '10px' }}>
+                     <input 
+                       type="text" 
+                       placeholder="Enter 6-digit Code" 
+                       value={otp}
+                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                       className="input-field"
+                       style={{ flex: 1, padding: '12px', fontSize: '16px', fontWeight: 800, textAlign: 'center', letterSpacing: '4px', background: 'var(--bg-surface)' }}
+                     />
+                     <button 
+                       onClick={handleVerifyDelivery}
+                       disabled={verifying}
+                       className="btn"
+                       style={{ padding: '0 24px', fontSize: '14px', fontWeight: 700, background: 'var(--primary-blue)', color: 'white' }}
+                     >
+                       {verifying ? 'Verifying...' : 'Verify & Complete'}
+                     </button>
+                   </div>
+                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.4' }}>
+                     The customer received this unique code via email and SMS. Verification is required to finalize delivery.
+                   </p>
+                </div>
+              </section>
+            )}
           </div>
         </div>
       )}

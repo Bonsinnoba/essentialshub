@@ -142,15 +142,50 @@ try {
         throw new Exception('No email returned by provider');
     }
 
+    // --- Self-healing Schema ---
+    if ($config['DB_AUTO_REPAIR'] ?? false) {
+        try {
+            $cols = $pdo->query("DESCRIBE users")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('auth_provider', $cols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'");
+            }
+            if (!in_array('auth_provider_id', $cols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN auth_provider_id VARCHAR(255) DEFAULT NULL");
+            }
+        } catch (Exception $e) {
+            error_log("Schema auto-repair failed in social_auth: " . $e->getMessage());
+        }
+    }
+
     // look up or create local user
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        // social login is only for existing accounts
-        http_response_code(403);
-        throw new Exception('This email has no account yet. Please register using Ghana card verification first.');
+        $providerId = $userInfo['id'] ?? $userInfo['sub'] ?? null;
+        $randomPassword = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
+        
+        $insertStmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, id_verified, auth_provider, auth_provider_id, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, NOW(), NOW())");
+        $insertStmt->execute([$name ?: 'New User', $email, $randomPassword, $provider, $providerId]);
+        
+        $newUserId = $pdo->lastInsertId();
+        
+        // Fetch the newly created user
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->execute([$newUserId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Log the auto-registration
+        logger('ok', 'AUTH_SOCIAL', "User automatically registered via $provider: {$email}");
+    } else {
+        // Option: Link the provider ID if it was a local account
+        if (empty($user['auth_provider']) || $user['auth_provider'] === 'local') {
+             $providerId = $userInfo['id'] ?? $userInfo['sub'] ?? null;
+             $updateStmt = $pdo->prepare("UPDATE users SET auth_provider = ?, auth_provider_id = ? WHERE id = ?");
+             $updateStmt->execute([$provider, $providerId, $user['id']]);
+        }
+        logger('info', 'AUTH_SOCIAL', "User logged in via $provider: {$email}");
     }
 
     // issue token
@@ -165,10 +200,29 @@ try {
         exit;
     }
 
-    echo json_encode(['success' => true, 'data' => ['token' => $token, 'user' => $user]]);
+    echo json_encode(['success' => true, 'data' => [
+        'token' => $token,
+        'user' => [
+            'id' => (int)$user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'phone' => $user['phone'] ?? '',
+            'address' => $user['address'] ?? '',
+            'level' => $user['level'] ?? 1,
+            'levelName' => $user['level_name'] ?? 'Starter',
+            'avatar' => $user['avatar_text'] ?? '',
+            'profileImage' => $user['profile_image'] ?? null,
+            'role' => $user['role'],
+            'email_notif' => (bool)($user['email_notif'] ?? true),
+            'push_notif' => (bool)($user['push_notif'] ?? true),
+            'sms_tracking' => (bool)($user['sms_tracking'] ?? true),
+            'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false)
+        ]
+    ]]);
 } catch (Exception $e) {
     // on error, try to redirect back to front-end with message
     $err = $e->getMessage();
+    error_log("SOCIAL AUTH FATAL EXCEPTION: " . get_class($e) . " - " . $e->getMessage() . (method_exists($e, "getResponseBody") ? " BODY: " . print_r($e->getResponseBody(), true) : "") . "\n", 3, __DIR__ . "/social_debug.log");
     $frontend = $config['FRONTEND_URL'] ?? '';
     if ($frontend) {
         $location = rtrim($frontend, '/') . '/?social_error=' . urlencode($err);

@@ -5,6 +5,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useUser } from '../context/UserContext';
 import { fetchProductReviews, submitReview } from '../services/api';
 
+
 export default function ProductModal({ product, products = [], isOpen, onClose, onAddToCart, onAddToWishlist, onProductClick }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || 'Default');
@@ -12,7 +13,7 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
   const [activeImage, setActiveImage] = useState(product?.image);
   const { isInWishlist } = useWishlist();
   const { formatPrice } = useSettings();
-  const { user } = useUser();
+  const { user, openAuthModal } = useUser();
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
@@ -77,6 +78,10 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
     .slice(0, 4);
 
   const handleAddToCart = () => {
+    if (!user) {
+      if (openAuthModal) openAuthModal('signin');
+      return;
+    }
     setIsAdding(true);
     const cartProduct = {
       ...product,
@@ -103,20 +108,29 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
     <div className={`modal-backdrop active`} onClick={onClose}>
       <div className="product-modal modal glass animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
         <button 
-          className="btn-secondary close-button" 
           onClick={onClose} 
           style={{ 
             position: 'absolute', 
             top: '20px', 
             right: '20px', 
-            width: '36px', 
-            height: '36px', 
+            width: '32px', 
+            height: '32px', 
             padding: 0, 
             borderRadius: '50%',
-            zIndex: 10
+            zIndex: 10,
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s'
           }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'none'}
         >
-          <X size={20} />
+          <X size={18} />
         </button>
         
         <div className="product-modal-content">
@@ -133,7 +147,16 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
                       className={`thumbnail-item ${activeImage === img ? 'active' : ''}`}
                       onClick={() => setActiveImage(img)}
                     >
-                      <img src={img} alt={`View ${idx + 1}`} />
+                      <img 
+                        src={img} 
+                        alt={`View ${idx + 1}`} 
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover', 
+                          borderRadius: '8px' 
+                        }} 
+                      />
                     </div>
                   ))}
                 </div>
@@ -141,16 +164,16 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
 
               {/* Primary Image Stage */}
               <div className="modal-image-stage">
-                {activeImage ? (
-                  <img 
-                    src={selectedVariant?.image_url || activeImage} 
-                    alt={product.name} 
-                    className="stage-image animate-fade-in"
-                    key={selectedVariant?.image_url || activeImage}
-                  />
-                ) : (
-                  <div className="image-placeholder"></div>
-                )}
+                <img 
+                  src={selectedVariant?.image_url || activeImage} 
+                  alt={product.name} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain', 
+                    borderRadius: '16px' 
+                  }} 
+                />
               </div>
             </div>
 
@@ -510,7 +533,16 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
                       onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-light)'}
                       >
                         <div style={{ width: '100%', height: '120px', background: 'white', borderRadius: '10px', overflow: 'hidden', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={rp.image_url || rp.image} alt={rp.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            <img 
+                              src={rp.image_url || rp.image} 
+                              alt={rp.name} 
+                              style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'contain', 
+                                borderRadius: '10px' 
+                              }} 
+                            />
                         </div>
                         <h4 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 6px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>{rp.name}</h4>
                         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -48,13 +48,16 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         if (!in_array('review_requested_at', $cols)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN review_requested_at DATETIME DEFAULT NULL AFTER payment_reference");
         }
+        if (!in_array('delivery_otp', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN delivery_otp VARCHAR(10) DEFAULT NULL AFTER status");
+        }
     } catch (Exception $e) {
         error_log("Orders schema self-healing failed: " . $e->getMessage());
     }
 }
 
 // Authenticate User for all order operations
-$authenticatedUserId = authenticate();
+$authenticatedUserId = authenticate($pdo);
 $authenticatedUserName = getUserName($authenticatedUserId, $pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -74,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
             if (!$order) {
                 http_response_code(404);
-                echo json_encode(['error' => 'Order not found']);
+                echo json_encode(['success' => false, 'message' => 'Order not found']);
                 exit;
             }
 
@@ -91,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode(['success' => true, 'data' => $order]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to fetch order details']);
+            echo json_encode(['success' => false, 'message' => 'Failed to fetch order details']);
         }
         exit;
     }
@@ -101,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($requestedUserId != $authenticatedUserId) {
         http_response_code(403);
-        echo json_encode(['error' => 'Forbidden: You can only view your own orders']);
+        echo json_encode(['success' => false, 'message' => 'Forbidden: You can only view your own orders']);
         exit;
     }
 
@@ -123,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } catch (Exception $e) {
         error_log("Order fetch error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to fetch orders']);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch orders']);
     }
     exit;
 }
@@ -134,23 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!is_array($decoded)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid JSON payload']);
+        echo json_encode(['success' => false, 'message' => 'Invalid JSON payload']);
         exit;
     }
 
     // Use authenticated User ID instead of trusting input
     $userId = $authenticatedUserId;
 
-    // Check if user is verified
-    $userStmt = $pdo->prepare("SELECT id_verified, role FROM users WHERE id = ?");
-    $userStmt->execute([$userId]);
-    $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$userData || ($userData['id_verified'] == 0 && $userData['role'] === 'customer')) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Verification Required: Please complete your Ghana Card verification to place orders.', 'verification_required' => true]);
-        exit;
-    }
 
     $items = $decoded['items'] ?? [];
     $totalAmount = (float)($decoded['total_amount'] ?? 0);
@@ -162,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($items) || $totalAmount <= 0) {
         http_response_code(400);
-        echo json_encode(['error' => 'Missing required fields or invalid amount']);
+        echo json_encode(['success' => false, 'message' => 'Missing required fields or invalid amount']);
         exit;
     }
 
@@ -181,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = json_decode($result, true);
         if (!$response || !isset($response['data']) || $response['data']['status'] !== 'success') {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid or failed payment reference']);
+            echo json_encode(['success' => false, 'message' => 'Invalid or failed payment reference']);
             exit;
         }
 
@@ -189,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $paidAmount = $response['data']['amount'] / 100;
         if (abs($paidAmount - $totalAmount) > 1.0) { // Allow small difference for fees/rounding
             http_response_code(400);
-            echo json_encode(['error' => 'Payment amount mismatch. Paid: ' . $paidAmount . ', Required: ' . $totalAmount]);
+            echo json_encode(['success' => false, 'message' => 'Payment amount mismatch. Paid: ' . $paidAmount . ', Required: ' . $totalAmount]);
             exit;
         }
 
@@ -206,8 +200,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Create Order
-        $stmt = $pdo->prepare("INSERT INTO orders (user_id, total_amount, coupon_code, discount_amount, status, shipping_address, payment_method, payment_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$userId, $totalAmount, $couponCode, $discountAmount, $orderStatus, $shippingAddress, $paymentMethod, $paymentReference]);
+        $deliveryOtp = sprintf("%06d", mt_rand(100000, 999999));
+        $stmt = $pdo->prepare("INSERT INTO orders (user_id, total_amount, coupon_code, discount_amount, status, delivery_otp, shipping_address, payment_method, payment_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$userId, $totalAmount, $couponCode, $discountAmount, $orderStatus, $deliveryOtp, $shippingAddress, $paymentMethod, $paymentReference]);
         $orderId = $pdo->lastInsertId();
 
         // Add Items and update stock
@@ -264,12 +259,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once 'notifications.php';
             $notifier = new NotificationService();
 
-            // Fetch user email
-            $userEmailStmt = $pdo->prepare("SELECT email, name FROM users WHERE id = ?");
-            $userEmailStmt->execute([$userId]);
-            $orderUser = $userEmailStmt->fetch(PDO::FETCH_ASSOC);
+            // Fetch user preferences
+            $userPrefStmt = $pdo->prepare("SELECT email, name, email_notif, sms_tracking, phone FROM users WHERE id = ?");
+            $userPrefStmt->execute([$userId]);
+            $orderUser = $userPrefStmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($orderUser && $orderUser['email']) {
+            if ($orderUser && $orderUser['email'] && ($orderUser['email_notif'] ?? true)) {
                 // Build itemized list
                 $itemsList = "";
                 foreach ($items as $item) {
@@ -283,16 +278,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg = "Hi {$orderUser['name']},\n\n"
                     . "Thank you for your order! Here are your order details:\n\n"
                     . "Order ID: ORD-{$orderId}\n"
+                    . "Delivery Code: {$deliveryOtp}\n"
                     . "Date: " . date('d M Y, h:i A') . "\n"
                     . "Payment: {$paymentMethod}\n\n"
                     . "Items:\n{$itemsList}\n"
                     . "Total: GHS " . number_format($totalAmount, 2) . "\n"
                     . "Shipping To: {$shippingAddress}\n\n"
+                    . "IMPORTANT: Please provide the Delivery Code ({$deliveryOtp}) to the agent upon arrival to verify receipt.\n\n"
                     . "We'll notify you when your order ships.\n\n"
                     . "— The ElectroCom Team\n"
                     . "support@electrocom.com";
 
                 $notifier->sendEmail($orderUser['email'], $subject, $msg);
+            }
+
+            // --- Send SMS Tracking if enabled ---
+            if ($orderUser && $orderUser['phone'] && ($orderUser['sms_tracking'] ?? true)) {
+                $smsMsg = "ElectroCom Order ORD-{$orderId}: Your order for GHS " . number_format($totalAmount, 2) . " has been received! Delivery Code: {$deliveryOtp}. Tracking: [URL]";
+                $notifier->sendSMS($orderUser['phone'], $smsMsg);
             }
         } catch (Exception $emailErr) {
             // Don't fail the order if email fails
@@ -306,6 +309,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         error_log("Order creation error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'Order creation failed']);
+        echo json_encode(['success' => false, 'message' => 'Order creation failed']);
     }
 }

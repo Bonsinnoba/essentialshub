@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // POST: Submit a review
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $userId = authenticate();
+    $userId = authenticate($pdo);
 
     $content = trim(file_get_contents("php://input"));
     $decoded = json_decode($content, true);

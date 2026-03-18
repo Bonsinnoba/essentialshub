@@ -23,13 +23,17 @@ Create a production `.env.php` file on your server. **DO NOT** use development k
 | `APP_ENV` | Must be set to `'production'`. |
 | `ALLOWED_ORIGINS` | List only your live `https` domains. |
 | `JWT_SECRET` | Generate a 64+ character random string. |
-| `PASSWORD_PEPPER` | Generate a unique random string (cannot be changed later without breaking logins). |
-| `DATA_ENCRYPTION_KEY` | **CRITICAL**: 32+ character key for Ghana Card PII encryption. |
-| `DB_NAME` | Rename to `electrocom` for brand consistency. |
+| `PASSWORD_PEPPER` | Generate a unique random string. |
+| `SMTP_HOST` | Your live SMTP server (e.g., `smtp.gmail.com`). |
+| `SMTP_USER` | Production email account. |
+| `SMTP_PASS` | Production email password. |
+| `HUBTEL_CLIENT_ID` | Production API credentials for Ghana SMS. |
+| `HUBTEL_CLIENT_SECRET` | Production API credentials for Ghana SMS. |
+| `DB_NAME` | Set to `electrocom`. |
 | `MAIL_FROM` | Set to `no-reply@electrocom.com`. |
 
 > [!IMPORTANT]
-> Change the Super User password immediately after the first login in production.
+> Ensure all development-only scripts and `check_*.php` files are removed before go-live.
 
 ---
 

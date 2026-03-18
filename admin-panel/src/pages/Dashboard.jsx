@@ -127,7 +127,7 @@ export default function Dashboard() {
         <StatCard 
           icon={<DollarSign size={24} />} 
           label="Total Revenue" 
-          value={`$${data.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} 
+          value={`GH₵ ${data.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} 
           trend="+12.4%" 
           trendLabel="vs previous period"
           color="#3b82f6"
@@ -188,11 +188,12 @@ export default function Dashboard() {
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
-                  tickFormatter={(val) => `$${val}`}
+                  tickFormatter={(val) => `GH₵${val}`}
                 />
                 <Tooltip 
                   contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
                   itemStyle={{ color: 'var(--primary-blue)', fontWeight: 700 }}
+                  formatter={(value) => [`GH₵ ${value.toLocaleString()}`, 'Revenue']}
                 />
                 <Area type="monotone" dataKey="daily_revenue" stroke="var(--primary-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
               </AreaChart>
@@ -245,9 +246,9 @@ export default function Dashboard() {
                     <PieChart>
                         <Pie
                             data={[
-                                { name: 'Functional', value: 85 },
-                                { name: 'Low Stock', value: 10 },
-                                { name: 'Out of Stock', value: 5 }
+                                { name: 'Optimal', value: Number(data.inventory_status?.optimal || 0) },
+                                { name: 'Low Stock', value: Number(data.inventory_status?.low || 0) },
+                                { name: 'Out of Stock', value: Number(data.inventory_status?.out_of_stock || 0) }
                             ]}
                             cx="50%"
                             cy="50%"
@@ -278,14 +279,14 @@ export default function Dashboard() {
                     <div style={{ width: 40, height: 40, background: 'rgba(16, 185, 129, 0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}><TrendingUp size={20}/></div>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: '14px' }}>Revenue Peak Detected</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Yesterday saw the highest single-day revenue in the last 30 days.</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Highest single-day revenue in last 30 days: GH₵ {data.strategic_insights?.revenue_peak?.toLocaleString()}.</div>
                     </div>
                 </div>
                 <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)', background: 'rgba(59, 130, 246, 0.05)', display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ width: 40, height: 40, background: 'rgba(59, 130, 246, 0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}><Package size={20}/></div>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: '14px' }}>Fulfillment Efficiency</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Average time from Pending to Shipped has improved by 18%.</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Average time from order placement to shipping is {data.strategic_insights?.ship_efficiency} hours.</div>
                     </div>
                 </div>
             </div>

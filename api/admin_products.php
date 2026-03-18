@@ -1,11 +1,11 @@
-<?php
 require_once 'db.php';
+require_once 'notifications.php';
 
 header('Content-Type: application/json');
 
 // Authenticate and Require Roles
 try {
-    $userId = requireRole(['admin', 'branch_admin', 'marketing'], $pdo);
+    $userId = requireRole(RBAC_ALL_ADMINS, $pdo);
     $userName = getUserName($userId, $pdo);
 } catch (Exception $e) {
     http_response_code(401);
@@ -192,6 +192,17 @@ if ($method === 'POST') {
             }
 
             $pdo->commit();
+            
+            // Check for low stock and notify admins
+            if ($stock < 10) {
+                $notifService = new NotificationService();
+                $notifService->logAdminNotification(
+                    "Low Stock Alert: {$name}",
+                    "Product '{$name}' (ID: {$productId}) is running low on stock. Current quantity: {$stock}.",
+                    'system'
+                );
+            }
+
             logger('info', 'PRODUCTS', "New product created: {$name} (ID: {$productId}) by {$userName}");
 
             echo json_encode(['success' => true, 'id' => $productId, 'image_url' => $image_url]);
@@ -298,6 +309,17 @@ if ($method === 'POST') {
             }
 
             $pdo->commit();
+
+            // Check for low stock and notify admins
+            if ($stock < 10) {
+                $notifService = new NotificationService();
+                $notifService->logAdminNotification(
+                    "Low Stock Alert: {$name}",
+                    "Product '{$name}' (ID: {$id}) is running low on stock. Current quantity: {$stock}.",
+                    'system'
+                );
+            }
+
             logger('info', 'PRODUCTS', "Product updated (ID: {$id}) by {$userName}");
 
             echo json_encode(['success' => true, 'image_url' => $image_url]);

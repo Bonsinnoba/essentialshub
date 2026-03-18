@@ -1,7 +1,6 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: *");
 require 'db.php';
+date_default_timezone_set('GMT');
 echo "<h1>Welcome to my Shop</h1>";
 
 $stmt = $pdo->query("SELECT * FROM products");

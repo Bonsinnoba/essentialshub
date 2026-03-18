@@ -1,0 +1,17 @@
+# Credentials and Secrets
+api/.env.php
+api/logs/
+api/uploads/
+api/backups/
+api/cache/
+
+# Node dependencies
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+Thumbs.db

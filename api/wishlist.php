@@ -7,7 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // Authentication
 try {
-    $userId = authenticate();
+    $userId = authenticate($pdo);
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);

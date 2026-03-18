@@ -17,6 +17,7 @@ export default function SystemNotifications() {
 
   const getIcon = (type) => {
     switch (type) {
+      case 'system': return <Bell size={20} color="var(--accent-blue)" />;
       case 'security': return <Shield size={20} color="var(--danger)" />;
       case 'order': return <ShoppingBag size={20} color="var(--primary-blue)" />;
       default: return <Info size={20} color="var(--accent-blue)" />;
@@ -67,7 +68,7 @@ export default function SystemNotifications() {
              />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {['All', 'Security', 'Order', 'Info'].map(t => (
+            {['All', 'System', 'Security', 'Order', 'Info'].map(t => (
               <button 
                 key={t}
                 onClick={() => setFilterType(t)}

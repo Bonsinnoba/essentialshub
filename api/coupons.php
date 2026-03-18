@@ -106,7 +106,7 @@ if ($method === 'POST' && $action === 'validate') {
 
 // ------ Admin Endpoints Below ------
 try {
-    $userId = requireRole(['admin', 'super', 'marketing'], $pdo);
+    $userId = requireRole(['admin', 'super', 'marketing', 'store_manager', 'branch_admin'], $pdo);
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);

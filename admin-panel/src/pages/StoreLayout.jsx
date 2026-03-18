@@ -77,7 +77,17 @@ export default function StoreLayout() {
       if (storeData.success) {
         setBranches(storeData.branches);
         setLocations(storeData.locations);
-        if (storeData.branches.length > 0 && !selectedBranch) {
+        
+        // Auto-select branch for managers
+        const managerBranchId = user.branch_id;
+        const isManager = user.role === 'branch_admin' || user.role === 'store_manager';
+        
+        if (isManager && managerBranchId) {
+          const managerBranch = storeData.branches.find(b => b.id === parseInt(managerBranchId));
+          if (managerBranch) {
+            setSelectedBranch(managerBranch);
+          }
+        } else if (storeData.branches.length > 0 && !selectedBranch) {
           setSelectedBranch(storeData.branches[0]);
         } else if (selectedBranch) {
             // Keep current selection but refresh its data
@@ -179,51 +189,65 @@ export default function StoreLayout() {
              <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-1px', margin: 0 }}>Inventory Spreadsheet</h1>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '16px' }}>
-            Detailed logistical view of stock placement in <strong>{selectedBranch?.name}</strong>.
+            Detailed logistical view of stock placement in <strong>{selectedBranch?.name || 'Loading branch...'}</strong>.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Download size={18} /> Export CSV
           </button>
-          <button className="btn-primary" onClick={() => setIsAssigning(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            className="btn-primary" 
+            onClick={() => {
+              const isManager = user.role === 'branch_admin' || user.role === 'store_manager';
+              if (isManager && selectedBranch) {
+                setAssignForm(prev => ({
+                  ...prev,
+                  target_branch_id: selectedBranch.id,
+                  branch_code_verify: selectedBranch.branch_code
+                }));
+              }
+              setIsAssigning(true);
+            }} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <Plus size={18} /> Assign Location
           </button>
         </div>
       </header>
 
-      {/* Branch Selection Bar */}
-      <div className="card glass" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface-secondary)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)' }}>
-            <MapPin size={20} />
-            <span style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Location:</span>
+      {/* Branch Selection Bar - Only visible to super admins */}
+      {user.role === 'super' && (
+        <div className="card glass" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-surface-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)' }}>
+              <MapPin size={20} />
+              <span style={{ fontSize: '14px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Select Location:</span>
+            </div>
+            <select 
+              value={selectedBranch?.id || ''}
+              onChange={(e) => setSelectedBranch(branches.find(b => b.id === parseInt(e.target.value)))}
+              style={{ 
+                padding: '10px 16px', 
+                borderRadius: '8px', 
+                border: '2px solid var(--primary-blue)', 
+                background: 'white', 
+                color: 'var(--text-main)', 
+                fontWeight: 700,
+                fontSize: '15px',
+                minWidth: '280px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(var(--primary-blue-rgb), 0.1)'
+              }}
+            >
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.branch_code} — {b.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <select 
-            value={selectedBranch?.id || ''}
-            onChange={(e) => setSelectedBranch(branches.find(b => b.id === parseInt(e.target.value)))}
-            style={{ 
-              padding: '10px 16px', 
-              borderRadius: '8px', 
-              border: '2px solid var(--primary-blue)', 
-              background: 'white', 
-              color: 'var(--text-main)', 
-              fontWeight: 700,
-              fontSize: '15px',
-              minWidth: '280px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(var(--primary-blue-rgb), 0.1)'
-            }}
-          >
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>
-                {b.branch_code} — {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {user.role === 'super' && (
+          
           <button 
             onClick={() => setIsAddingBranch(true)}
             style={{ 
@@ -241,8 +265,8 @@ export default function StoreLayout() {
           >
             + Register New Warehouse
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="card glass" style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
         {/* Spreadsheet Toolbar */}
@@ -382,20 +406,27 @@ export default function StoreLayout() {
                 <button onClick={() => setIsAssigning(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24} /></button>
             </div>
             <form onSubmit={handleAssignSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>Target Location</label>
-                <select 
-                  value={assignForm.target_branch_id}
-                  onChange={(e) => setAssignForm({ ...assignForm, target_branch_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-surface-secondary)', color: 'var(--text-main)' }}
-                  required
-                >
-                  <option value="">-- Select Location --</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
+              {user.role === 'super' ? (
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>Target Location</label>
+                  <select 
+                    value={assignForm.target_branch_id}
+                    onChange={(e) => setAssignForm({ ...assignForm, target_branch_id: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-surface-secondary)', color: 'var(--text-main)' }}
+                    required
+                  >
+                    <option value="">-- Select Location --</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ padding: '10px', background: 'rgba(var(--primary-blue-rgb), 0.05)', borderRadius: '8px', border: '1px solid var(--info-bg)' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Target Location (Locked)</label>
+                  <div style={{ fontWeight: 700 }}>{selectedBranch?.name}</div>
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>Product to Move</label>
@@ -442,17 +473,23 @@ export default function StoreLayout() {
               <div style={{ padding: '16px', background: 'rgba(var(--primary-blue-rgb), 0.05)', borderRadius: '12px', border: '1px solid var(--info-bg)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h4 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary-blue)', letterSpacing: '0.5px' }}>Security Verification</h4>
                 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 600 }}>Verify Location Code</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter target location code"
-                    value={assignForm.branch_code_verify}
-                    onChange={(e) => setAssignForm({ ...assignForm, branch_code_verify: e.target.value })}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'white', color: 'var(--text-main)' }}
-                    required
-                  />
-                </div>
+                {user.role === 'super' ? (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 600 }}>Verify Location Code</label>
+                    <input 
+                      type="text" 
+                      placeholder="Enter target location code"
+                      value={assignForm.branch_code_verify}
+                      onChange={(e) => setAssignForm({ ...assignForm, branch_code_verify: e.target.value })}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'white', color: 'var(--text-main)' }}
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: 'none' }}>
+                    <input type="hidden" value={assignForm.branch_code_verify} required />
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>

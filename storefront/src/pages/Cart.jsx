@@ -2,20 +2,23 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Heart, X, AlertCircle, LogIn } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Heart, X, AlertCircle, LogIn, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
+
 export default function Cart() {
   const { user, openAuthModal } = useUser();
-  const { cartItems, removeFromCart, updateQuantity, subtotal } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, subtotal, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addNotification } = useNotifications();
   
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [couponInput, setCouponInput] = useState('');
 
   const tax = subtotal * 0.1;
-  const total = subtotal + tax;
+  const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const total = Math.max(0, subtotal - discount + tax);
 
   const handleMoveToWishlist = () => {
     if (!confirmDelete) return;
@@ -38,34 +41,6 @@ export default function Cart() {
     setConfirmDelete(null);
   };
 
-  if (!user) {
-    return (
-      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center', justifyContent: 'center', padding: '80px 0', textAlign: 'center', width: '100%' }}>
-        <div className="glass" style={{ 
-          width: '80px', 
-          height: '80px', 
-          borderRadius: '50%', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          marginBottom: '24px',
-          color: 'var(--primary-blue)'
-        }}>
-          <LogIn size={40} strokeWidth={1.5} />
-        </div>
-        <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>Log in to view cart</h2>
-        <p style={{ fontSize: '15px', maxWidth: '300px', lineHeight: '1.6', color: 'var(--text-muted)' }}>Sign in to see your saved items and proceed to checkout.</p>
-        <button 
-          className="btn-primary" 
-          style={{ marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          onClick={() => openAuthModal('signin')}
-        >
-          <LogIn size={18} />
-          Login / Register
-        </button>
-      </div>
-    );
-  }
 
   if (cartItems.length === 0) {
     return (
@@ -163,6 +138,15 @@ export default function Cart() {
                   <span className="text-muted">Shipping</span>
                   <span className="text-success">FREE</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--danger)', background: 'var(--danger-bg)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Tag size={14} />
+                      <span>Discount ({appliedCoupon.code})</span>
+                    </div>
+                    <span>-${discount.toFixed(2)}</span>
+                  </div>
+                )}
                 
                 <div className="summary-divider-line"></div>
                 
@@ -172,11 +156,65 @@ export default function Cart() {
                 </div>
               </div>
 
-              <Link to="/checkout" style={{ textDecoration: 'none' }}>
-                <button className="btn-primary btn-checkout-summary btn">
-                  Proceed to Checkout
+              {/* Coupon Form */}
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed var(--border-light)' }}>
+                {!appliedCoupon ? (
+                  <div style={{ marginTop: '20px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input 
+                        type="text" 
+                        value={couponInput} 
+                        onChange={(e) => setCouponInput(e.target.value)} 
+                        onKeyDown={(e) => { 
+                          if (e.key === 'Enter') { 
+                            e.preventDefault(); 
+                            applyCoupon(couponInput).then(success => success && setCouponInput('')); 
+                          } 
+                        }}
+                        placeholder="Promo Code" 
+                        className="input-premium" 
+                        style={{ flex: 1, padding: '12px 16px', height: '48px', fontSize: '14px', color: 'var(--text-main)', background: 'var(--bg-surface)' }} 
+                      />
+                      <button 
+                        onClick={() => applyCoupon(couponInput).then(success => success && setCouponInput(''))} 
+                        disabled={isApplyingCoupon || !couponInput.trim()} 
+                        className="btn-primary" 
+                        style={{ 
+                          padding: '0 24px', 
+                          height: '48px', 
+                          fontSize: '14px',
+                          borderRadius: '12px',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {isApplyingCoupon ? '...' : 'Apply'}
+                      </button>
+                    </div>
+                    {couponError && <div style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '8px' }}>{couponError}</div>}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '20px' }}>
+                    <button onClick={removeCoupon} className="btn-outline" style={{ width: '100%', fontSize: '13px', padding: '10px', color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                      Remove Coupon
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!user ? (
+                <button 
+                  className="btn-primary btn-checkout-summary btn"
+                  onClick={() => openAuthModal('signin')}
+                >
+                  Login to Checkout
                 </button>
-              </Link>
+              ) : (
+                <Link to="/checkout" style={{ textDecoration: 'none' }}>
+                  <button className="btn-primary btn-checkout-summary btn">
+                    Proceed to Checkout
+                  </button>
+                </Link>
+              )}
               
               <div className="secure-checkout-text">
                 Secure SSL Encrypted Checkout
@@ -273,4 +311,3 @@ export default function Cart() {
     </div>
   );
 }
-

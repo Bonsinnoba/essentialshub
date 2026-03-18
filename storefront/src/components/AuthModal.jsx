@@ -5,6 +5,7 @@ import { loginUser, registerUser, verifyUser, forgotPassword } from '../services
 import { useUser } from '../context/UserContext';
 
 
+
 export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -13,18 +14,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     if (isOpen) {
       setIsSignUp(initialMode === 'signup');
       setStep(1);
-    } else {
-      // cleanup camera and photo when modal closes
-      stopCapture();
-      setIdPhoto('');
     }
   }, [isOpen, initialMode]);
 
-  useEffect(() => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      setHasCamera(true);
-    }
-  }, []);
+
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const { updateUser } = useUser();
@@ -63,49 +56,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     country: 'Ghana',
     password: '',
     confirmPassword: '',
-    verification_method: 'email',
-    id_number: '',
-    id_photo: '' // base64 from camera scan
+    verification_method: 'email'
   });
-  const [capturing, setCapturing] = useState(false);
-  const [hasCamera, setHasCamera] = useState(false);
-  const [idPhoto, setIdPhoto] = useState('');
-  const videoRef = React.useRef(null);
-  const canvasRef = React.useRef(null);
 
-  const startCapture = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoRef.current.srcObject = stream;
-      setCapturing(true);
-    } catch (err) {
-      console.error('Camera error', err);
-      setError('Unable to access camera');
-    }
-  };
-
-  const stopCapture = () => {
-    const stream = videoRef.current?.srcObject;
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-    }
-    setCapturing(false);
-  };
-
-  const takePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video && canvas) {
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      const data = canvas.toDataURL('image/png');
-      setIdPhoto(data);
-      setFormData(prev => ({ ...prev, id_photo: data }));
-      stopCapture();
-    }
-  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [verificationStep, setVerificationStep] = useState(false);
@@ -138,24 +91,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
               setError('Please enter your phone number.');
               return;
           }
-          setStep(3);
-      } else if (step === 3) {
-          // Ghana Card verification is optional — validate format only if something was entered
-          if (formData.id_number && !/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/i.test(formData.id_number)) {
-              setError('Ghana card number format seems incorrect. Do not include spaces.');
-              return;
-          }
-          // Advance regardless of whether card details were provided
-          setStep(4);
+          setStep(3); // Password step is now step 3
       }
   };
 
-  const handleSkipVerification = () => {
-    setFormData(prev => ({ ...prev, id_number: '', id_photo: '' }));
-    setIdPhoto('');
-    setError('');
-    setStep(4);
-  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -166,8 +106,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
       return;
     }
 
-    if (isSignUp && step < 4) {
-      return; // Only submit on step 4 (password step)
+    if (isSignUp && step < 3) {
+      return; // Only submit on step 3 (password step)
     }
 
     if (isSignUp && formData.password !== formData.confirmPassword) {
@@ -193,7 +133,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
           // Direct login
           updateUser(response.data.user);
           onClose(response.data.user);
-          setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email', id_number: '', id_photo: '' });
+          setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email' });
         }
       } else if (response.needs_verification) {
           setTempUser(response.user);
@@ -246,7 +186,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
         // updateUser persists via secureStorage internally — no direct localStorage needed
         updateUser(tempUser);
         onClose(tempUser);
-        setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email', id_number: '', id_photo: '' });
+        setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email' });
         setVerificationStep(false);
         setTempUser(null);
         navigate('/profile');
@@ -267,20 +207,29 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     <div className={`modal-backdrop active`} onClick={onClose}>
       <div className={`auth-modal modal glass animate-scale-in ${isSignUp ? 'right-panel-active' : ''}`} onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden' }}>
         <button 
-          className="btn-secondary modal-close-btn" 
           onClick={onClose} 
           style={{ 
             position: 'absolute', 
             top: '20px', 
             right: '20px', 
-            width: '36px', 
-            height: '36px', 
+            width: '32px', 
+            height: '32px', 
             padding: 0, 
             borderRadius: '50%',
-            zIndex: 1000
+            zIndex: 1000,
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s'
           }}
+          onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'none'}
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
         {/* --- SIGN UP CONTAINER --- */}
@@ -289,7 +238,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
             <h1>{verificationStep ? 'Verify' : 'Create Account'}</h1>
             {!verificationStep && isSignUp && (
               <div className="step-dots">
-                {[1,2,3,4].map(n => (
+                {[1,2,3].map(n => (
                   <span key={n} className={`dot${step===n ? ' active' : ''}`} />
                 ))}
               </div>
@@ -355,71 +304,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                         <button type="button" className="btn-primary" onClick={handleNextStep} style={{ flex: 2 }}>Next Step</button>
                       </div>
                     </div>
-                  ) : step === 3 ? (
-                    <div className="animate-slide-down compact">
-                      
-                      <div className="form-group">
-                        <label>ID Number</label>
-                        <div className="input-wrapper">
-                          <input type="text" name="id_number" value={formData.id_number} onChange={handleChange} placeholder="Enter Ghana card number (e.g. GHA-1234-5678)" required autoComplete="off" spellCheck="false" />
-                        </div>
-                      </div>
-
-                      {/* face scan for Ghana card */}
-                        <div className="form-group">
-                          <label>Scan Face on Card</label>
-                          {idPhoto ? (
-                            <img src={idPhoto} alt="ID scan" style={{ width: '100%', borderRadius: '12px', marginBottom: '10px' }} />
-                          ) : hasCamera ? (
-                            <button type="button" className="btn-secondary" onClick={startCapture} style={{ marginBottom: '10px' }}>
-                              {capturing ? 'Capturing...' : 'Start Face Scan'}
-                            </button>
-                          ) : (
-                            <div>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                      const data = reader.result;
-                                      setIdPhoto(data);
-                                      setFormData(prev => ({ ...prev, id_photo: data }));
-                                    };
-                                    reader.readAsDataURL(file);
-                                  }
-                                }}
-                              />
-                              <small style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)' }}>
-                                No camera detected; upload a photo of the card face.
-                              </small>
-                            </div>
-                          )}
-                          {capturing && (
-                            <>
-                              <video ref={videoRef} autoPlay playsInline style={{ width: '100%', borderRadius: '12px', marginBottom: '10px' }} />
-                              <button type="button" className="btn-primary" onClick={takePhoto} style={{ marginBottom: '10px' }}>
-                                Capture
-                              </button>
-                              <button type="button" className="btn-secondary" onClick={stopCapture}>
-                                Cancel
-                              </button>
-                            </>
-                          )}
-                          <canvas ref={canvasRef} style={{ display: 'none' }} />
-                        </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <button type="button" className="btn-secondary" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
-                          <button type="button" className="btn-primary" onClick={handleNextStep} style={{ flex: 2 }}>Next Step</button>
-                        </div>
-                        <button type="button" className="btn-outline" onClick={handleSkipVerification} style={{ width: '100%', border: 'none', color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'underline' }}>
-                          Skip verification for now (Restricted access)
-                        </button>
-                      </div>
-                    </div>
                   ) : (
                     <div className="animate-slide-down">
                       <div className="form-group">
@@ -438,7 +322,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                        <button type="button" className="btn-secondary" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
+                        <button type="button" className="btn-secondary" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
                         <button type="submit" className="btn-primary" style={{ flex: 2 }} disabled={loading}>
                           {loading ? <Loader className="animate-spin" size={18} /> : 'Sign Up'}
                         </button>

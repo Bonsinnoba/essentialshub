@@ -4,10 +4,13 @@
 
 // Standardized RBAC Role Groups
 if (!defined('RBAC_ADMIN_GROUP')) {
-    define('RBAC_ADMIN_GROUP', ['admin', 'branch_admin', 'marketing', 'accountant']);
+    define('RBAC_ADMIN_GROUP', ['admin', 'branch_admin', 'store_manager', 'marketing', 'accountant']);
 }
 if (!defined('RBAC_SUPER_GROUP')) {
     define('RBAC_SUPER_GROUP', ['super']);
+}
+if (!defined('RBAC_ALL_ADMINS')) {
+    define('RBAC_ALL_ADMINS', array_merge(RBAC_ADMIN_GROUP, RBAC_SUPER_GROUP));
 }
 
 /**
@@ -114,10 +117,25 @@ if (!function_exists('generateToken')) {
 }
 
 /**
+ * Polyfill for getallheaders() if missing (common in php -S or FastCGI)
+ */
+if (!function_exists('getallheaders')) {
+    function getallheaders() {
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+}
+
+/**
  * Authenticate Request
  */
 if (!function_exists('authenticate')) {
-    function authenticate()
+    function authenticate($pdo = null, $dieOnError = true)
     {
         $token = $_COOKIE['ehub_session'] ?? null;
 
@@ -130,27 +148,73 @@ if (!function_exists('authenticate')) {
         }
 
         if (!$token) {
-            header('Content-Type: application/json');
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: Missing or invalid token.']);
-            exit;
+            if ($dieOnError) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized: Missing or invalid token.']);
+                exit;
+            }
+            return null;
         }
 
         $parts = explode('.', $token);
         if (count($parts) !== 3) {
-            header('Content-Type: application/json');
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid token.']);
-            exit;
+            if ($dieOnError) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid token format.']);
+                exit;
+            }
+            return null;
         }
         $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
         if (isset($payload['exp']) && $payload['exp'] < time()) {
-            header('Content-Type: application/json');
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: Token expired.']);
-            exit;
+            clearSession();
+            if ($dieOnError) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized: Token expired.']);
+                exit;
+            }
+            return null;
         }
-        return $payload['user_id'] ?? null;
+
+        $userId = $payload['user_id'] ?? null;
+
+        // If PDO is available, verify the user actually exists in the database
+        if ($userId && $pdo) {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            if (!$stmt->fetch()) {
+                clearSession();
+                if ($dieOnError) {
+                    header('Content-Type: application/json');
+                    http_response_code(401);
+                    echo json_encode(['success' => false, 'message' => 'Account no longer exists. Please log in again.']);
+                    exit;
+                }
+                return null;
+            }
+        }
+
+        return $userId;
+    }
+}
+
+/**
+ * Clear the session cookie
+ */
+if (!function_exists('clearSession')) {
+    function clearSession() {
+        $cookieParams = [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'domain' => '', // Set if using a specific domain
+            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'httponly' => true,
+            'samesite' => 'Strict'
+        ];
+        setcookie('ehub_session', '', $cookieParams);
     }
 }
 
@@ -164,6 +228,19 @@ if (!function_exists('getUserRole')) {
         $stmt->execute([$userId]);
         $row = $stmt->fetch();
         return $row ? $row['role'] : null;
+    }
+}
+
+/**
+ * Get Manager Branch ID
+ */
+if (!function_exists('getManagerBranchId')) {
+    function getManagerBranchId($userId, $pdo)
+    {
+        $stmt = $pdo->prepare("SELECT branch_id FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        return $row ? $row['branch_id'] : null;
     }
 }
 
@@ -240,27 +317,51 @@ if (!function_exists('logger')) {
 
 /**
  * Rate Limiter
+ * $limit: request count per window
+ * $window: time window in seconds (e.g., 60 for minute, 3600 for hour)
  */
 if (!function_exists('checkRateLimit')) {
-    function checkRateLimit($pdo)
+    function checkRateLimit($pdo, $limit = 300, $window = 60)
     {
+        // Self-heal table if needed
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS api_rate_limits (
+                ip_address VARCHAR(45) PRIMARY KEY,
+                request_count INT DEFAULT 1,
+                last_request TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
+        } catch (Exception $e) {}
+
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         try {
             $stmt = $pdo->prepare("SELECT request_count, last_request FROM api_rate_limits WHERE ip_address = ?");
             $stmt->execute([$ip]);
             $row = $stmt->fetch();
-            if ($row && (time() - strtotime($row['last_request']) < 60)) {
-                if ($row['request_count'] >= 300) {
-                    header('Content-Type: application/json');
-                    http_response_code(429);
-                    echo json_encode(['success' => false, 'message' => 'Too many requests. Please wait a minute.']);
-                    exit;
+            
+            if ($row) {
+                $lastTime = strtotime($row['last_request']);
+                // Check if we are still within the same window since the last request
+                if (time() - $lastTime < $window) {
+                    if ($row['request_count'] >= $limit) {
+                        header('Content-Type: application/json');
+                        http_response_code(429);
+                        $timeRemaining = ceil(($window - (time() - $lastTime)) / 60);
+                        echo json_encode([
+                            'success' => false, 
+                            'message' => "Too many attempts ($limit per hour). Please wait about $timeRemaining minutes."
+                        ]);
+                        exit;
+                    }
+                    $pdo->prepare("UPDATE api_rate_limits SET request_count = request_count + 1, last_request = CURRENT_TIMESTAMP WHERE ip_address = ?")->execute([$ip]);
+                } else {
+                    // Reset if the window has passed since the last attempt
+                    $pdo->prepare("UPDATE api_rate_limits SET request_count = 1, last_request = CURRENT_TIMESTAMP WHERE ip_address = ?")->execute([$ip]);
                 }
-                $pdo->prepare("UPDATE api_rate_limits SET request_count = request_count + 1 WHERE ip_address = ?")->execute([$ip]);
             } else {
-                $pdo->prepare("INSERT INTO api_rate_limits (ip_address, request_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE request_count = 1, last_request = CURRENT_TIMESTAMP")->execute([$ip]);
+                $pdo->prepare("INSERT INTO api_rate_limits (ip_address, request_count, last_request) VALUES (?, 1, CURRENT_TIMESTAMP)")->execute([$ip]);
             }
         } catch (Exception $e) {
+            logger('error', 'SECURITY', "Rate limit error: " . $e->getMessage());
         }
     }
 }

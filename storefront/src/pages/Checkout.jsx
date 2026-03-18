@@ -10,7 +10,7 @@ import { createOrder, validateCoupon } from '../services/api';
 import { usePaystackPayment } from 'react-paystack';
 
 export default function Checkout() {
-  const { cartItems, subtotal, clearCart } = useCart();
+  const { cartItems, subtotal, clearCart, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
   const { addNotification } = useNotifications();
   const { balance, deductBalance, addTransaction } = useWallet();
   const { user } = useUser();
@@ -20,9 +20,6 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [loading, setLoading] = useState(false);
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [couponError, setCouponError] = useState('');
-  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name && user.name !== 'Guest User' ? user.name : '',
     email: user?.email || '',
@@ -87,28 +84,12 @@ export default function Checkout() {
   const total = Math.max(0, subtotal - discount + tax + shippingFee);
 
   const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return;
-    setIsApplyingCoupon(true);
-    setCouponError('');
-    try {
-        const result = await validateCoupon(couponCode, subtotal);
-        if (result.success) {
-            setAppliedCoupon(result.coupon);
-            addNotification('Coupon applied successfully', 'success');
-            setCouponCode('');
-        } else {
-            setCouponError(result.error || 'Invalid coupon code');
-        }
-    } catch {
-        setCouponError('Error validating coupon. Please try again.');
-    } finally {
-        setIsApplyingCoupon(false);
-    }
+    const success = await applyCoupon(couponCode);
+    if (success) setCouponCode('');
   };
 
   const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponError('');
+    removeCoupon();
   };
 
   // Paystack Configuration
@@ -119,6 +100,10 @@ export default function Checkout() {
     publicKey: 'pk_test_85123d385802319ef58661644155554626155555', // REPLACE WITH YOUR ACTUAL PUBLIC KEY
     currency: 'GHS',
     channels: paymentMethod === 'momo' ? ['mobile_money'] : ['card', 'mobile_money'],
+    metadata: {
+      user_id: user?.id,
+      type: 'order_payment'
+    }
   };
 
   const initializePayment = usePaystackPayment(config);
@@ -144,6 +129,7 @@ export default function Checkout() {
         const response = await createOrder(orderData);
 
         if (response.success) {
+
             addNotification('Payment successful! Order placed.', 'success');
             clearCart();
             navigate('/');
@@ -279,15 +265,7 @@ export default function Checkout() {
           {step === 1 && (
             <div className="animate-fade-in">
               <h3 style={{ marginBottom: '24px', fontSize: '20px' }}>Shipping Information</h3>
-              {user?.address && (
-                <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--info-bg)', borderRadius: '12px', fontSize: '14px', color: 'var(--primary-blue)', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  <MapPin size={20} />
-                  <div>
-                    <strong style={{ display: 'block', marginBottom: '4px' }}>Using Saved Location</strong>
-                    <span style={{ opacity: 0.9 }}>We've pre-filled your shipping details from your profile. You can edit them below or enter a new location for this specific order.</span>
-                  </div>
-                </div>
-              )}
+
               <div style={{ display: 'grid', gap: '20px' }}>
                 <div className="form-group">
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>Full Name</label>
@@ -436,9 +414,10 @@ export default function Checkout() {
                     <div>
                         <strong>Mobile Money Payment</strong>
                         <div style={{ fontSize: '13px', marginTop: '4px' }}>You will be redirected to Paystack to complete your payment via M-Pesa, MTN, or Airtel Money.</div>
-                    </div>
                 </div>
+              </div>
               )}
+
 
               <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
                 <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(1)}>
@@ -553,7 +532,7 @@ export default function Checkout() {
 
             {/* Promo Code Input */}
             {!appliedCoupon ? (
-              <div style={{ marginTop: '20px', paddingop: '20px', borderTop: '1px dashed var(--border-light)' }}>
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed var(--border-light)' }}>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                   <input 
                     type="text" 
@@ -591,29 +570,6 @@ export default function Checkout() {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .input-premium {
-          width: 100%;
-          padding: 12px 16px;
-          border-radius: 12px;
-          border: 1px solid var(--border-light);
-          background: var(--bg-surface);
-          color: var(--text-main);
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .input-premium:focus {
-          border-color: var(--primary-blue);
-        }
-        @media (max-width: 1024px) {
-          .checkout-content {
-            grid-template-columns: 1fr !important;
-          }
-          .summary-section {
-            order: -1;
-          }
-        }
-      `}} />
     </div>
   );
 }

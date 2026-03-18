@@ -23,7 +23,7 @@ if (empty($email) || empty($password)) {
 
 try {
     // Fetch user by email
-    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method, email_notif, push_notif, sms_tracking, two_factor_enabled FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
@@ -76,7 +76,7 @@ try {
         exit;
     }
 
-    if (!$user['is_verified'] && !in_array($user['role'], ['admin', 'super'])) {
+    if (!$user['is_verified'] && !in_array($user['role'], RBAC_ALL_ADMINS)) {
         // Generate a new code for the login attempt if one doesn't exist
         $newCode = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT);
         $stmt = $pdo->prepare("UPDATE users SET verification_code = ? WHERE id = ?");
@@ -99,7 +99,7 @@ try {
             'success' => false,
             'needs_verification' => true,
             'message' => 'Please verify your account to continue. A new code has been sent.',
-            'user' => [
+            'data' => [
                 'id' => $user['id'],
                 'email' => $user['email'],
                 'phone' => $user['phone'],
@@ -111,6 +111,21 @@ try {
 
     // Generate token
     $token = generateToken($user['id']);
+
+    // Check for Two-Factor Authentication
+    if ($user['two_factor_enabled']) {
+        logger('info', 'AUTH', "MFA required for user {$user['email']}");
+        echo json_encode([
+            'success' => true,
+            'two_factor_required' => true,
+            'message' => '2-Step Verification required. Please enter your code.',
+            'data' => [
+                'id' => $user['id'],
+                'email' => $user['email']
+            ]
+        ]);
+        exit;
+    }
 
     // Set HttpOnly Cookie for security
     // In production, secure should be true. For local dev (no HTTPS), we keep it false.
@@ -140,7 +155,11 @@ try {
                 'levelName' => $user['level_name'],
                 'avatar' => $user['avatar_text'],
                 'profileImage' => $user['profile_image'],
-                'role' => $user['role']
+                'role' => $user['role'],
+                'email_notif' => (bool)($user['email_notif'] ?? true),
+                'push_notif' => (bool)($user['push_notif'] ?? true),
+                'sms_tracking' => (bool)($user['sms_tracking'] ?? true),
+                'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false)
             ]
         ]
     ]);

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { updateProfile } from '../services/api';
+import { useUser } from './UserContext';
 
 const SettingsContext = createContext();
 
@@ -11,13 +13,23 @@ export const useSettings = () => {
 };
 
 export const SettingsProvider = ({ children }) => {
+  const { user, updateUser } = useUser();
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: 'ElectroCom',
+    phone1: '0536683393',
+    phone2: '0506408074',
+    whatsapp: '233536683393',
+    siteEmail: 'support@electrocom.com',
+    maintenanceMode: false
+  });
+
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('ehub_settings_v2');
     return saved ? JSON.parse(saved) : {
-      emailNotif: true,
-      pushNotif: true,
-      twoFactor: false,
-      orderTracking: true,
+      email_notif: true,
+      push_notif: true,
+      two_factor_enabled: false,
+      sms_tracking: true,
       currency: 'GHS',
       language: 'English (UK)',
       currencySymbol: 'GH₵',
@@ -25,12 +37,56 @@ export const SettingsProvider = ({ children }) => {
     };
   });
 
+  // Fetch site settings from backend
+  useEffect(() => {
+    const loadSiteSettings = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/get_site_settings.php`);
+        const result = await response.json();
+        if (result.success) setSiteSettings(result.data);
+      } catch (error) {
+        console.error('Error loading site settings:', error);
+      }
+    };
+    loadSiteSettings();
+  }, []);
+
+  // Sync with user object on load/change
+  useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        email_notif: user.email_notif ?? prev.email_notif,
+        push_notif: user.push_notif ?? prev.push_notif,
+        sms_tracking: user.sms_tracking ?? prev.sms_tracking,
+        two_factor_enabled: user.two_factor_enabled ?? prev.two_factor_enabled
+      }));
+    }
+  }, [user]);
+
   useEffect(() => {
     localStorage.setItem('ehub_settings_v2', JSON.stringify(settings));
   }, [settings]);
 
-  const updateSetting = (key, value) => {
+  const updateSetting = async (key, value) => {
+    const prevValue = settings[key];
     setSettings(prev => ({ ...prev, [key]: value }));
+
+    // Persist to backend if a user is logged in and it's a preference field
+    const persistentKeys = ['email_notif', 'push_notif', 'sms_tracking', 'two_factor_enabled'];
+    if (user && persistentKeys.includes(key)) {
+      try {
+        const result = await updateProfile({ [key]: value });
+        if (result.success) {
+          updateUser({ ...user, [key]: value });
+        } else {
+          // Revert on failure
+          setSettings(prev => ({ ...prev, [key]: prevValue }));
+        }
+      } catch (error) {
+        setSettings(prev => ({ ...prev, [key]: prevValue }));
+      }
+    }
   };
 
   const updateCurrency = (currency) => {
@@ -50,7 +106,7 @@ export const SettingsProvider = ({ children }) => {
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSetting, updateCurrency, formatPrice }}>
+    <SettingsContext.Provider value={{ settings, siteSettings, updateSetting, updateCurrency, formatPrice }}>
       {children}
     </SettingsContext.Provider>
   );

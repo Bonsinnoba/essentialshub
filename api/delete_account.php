@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $userId = authenticate();
+    $userId = authenticate($pdo);
 
     if (!$userId) {
         http_response_code(401);
@@ -28,6 +28,9 @@ try {
     $stmt->execute([$userId]);
 
     $pdo->commit();
+
+    // Proactively clear the session cookie on deletion
+    clearSession();
 
     echo json_encode(['success' => true, 'message' => 'Account deleted successfully.']);
 } catch (Exception $e) {

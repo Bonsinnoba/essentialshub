@@ -1,6 +1,7 @@
 <?php
 // backend/get_products.php
 require_once 'db.php';
+header('Content-Type: application/json');
 
 try {
     $category = $_GET['category'] ?? null;

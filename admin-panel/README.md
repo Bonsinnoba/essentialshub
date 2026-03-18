@@ -1,28 +1,30 @@
-# EssentialsHub Admin Panel
+# ElectroCom Admin Panel
 
-A premium, standalone admin interface for managing the EssentialsHub ecosystem.
+The administrative nexus for managing products, orders, customers, and analytics.
 
 ## Features
-- **Modern Dashboard**: Real-time sales and revenue KPIs.
-- **Product Management**: Full CRUD capabilities for the product catalog.
-- **Order Tracking**: Manage shipments and order fulfillment.
-- **Responsive Design**: Optimized for desktops and tablets.
-- **Premium Aesthetic**: Glassmorphism and dark mode support.
+- **Dashboard**: Real-time sales analytics and traffic monitoring.
+- **Order Management**: Process orders, print invoices, and update tracking statuses.
+- **Product Catalog**: Add, edit, and categorize products with rich media support.
+- **Customer Relations**: Manage user accounts and review submissions.
+- **Retention Tools**: Abandoned cart recovery and automated review requests.
+- **Super-User Settings**: Global site configuration, backups, and security logs.
 
-## Getting Started
+## Development
 
-1. **Open Terminal** in the `admin` directory.
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
+### Setup
+```bash
+npm install
+```
 
-## Tech Stack
-- React 18
-- Vite
-- Lucide React (Icons)
-- React Router Dom
+### Run Locally
+```bash
+npm run dev
+```
+
+### Build for Production
+```bash
+npm run build
+```
+
+Ensure `VITE_API_BASE_URL` is correctly configured in `.env.production` before building.

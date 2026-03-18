@@ -1,15 +1,50 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import HeroSlider from '../components/HeroSlider';
 import ProductSkeleton from '../components/ProductSkeleton';
 
 export default function Home({ products, onProductClick, searchQuery, loading }) {
-  const filteredProducts = products.filter(p => {
-    const query = searchQuery.toLowerCase();
-    return p.name.toLowerCase().includes(query) || 
-           (p.category && p.category.toLowerCase().includes(query)) ||
-           (p.product_code && p.product_code.toLowerCase().includes(query));
-  });
+  const [visibleCount, setVisibleCount] = useState(9);
+  const [viewHistory, setViewHistory] = useState({});
+
+  useEffect(() => {
+    try {
+      const historyStr = localStorage.getItem('ehub_view_history');
+      if (historyStr) {
+        setViewHistory(JSON.parse(historyStr));
+      }
+    } catch (e) {
+      console.warn("Failed to parse view history:", e);
+    }
+  }, []);
+
+  const sortedProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    
+    // Sort primarily by view count (descending), then maintain original order
+    return [...products].sort((a, b) => {
+      const viewsA = viewHistory[a.id] || 0;
+      const viewsB = viewHistory[b.id] || 0;
+      return viewsB - viewsA;
+    });
+  }, [products, viewHistory]);
+
+  const filteredProducts = useMemo(() => {
+    return sortedProducts.filter(p => {
+      const query = searchQuery.toLowerCase();
+      return p.name.toLowerCase().includes(query) || 
+             (p.category && p.category.toLowerCase().includes(query)) ||
+             (p.product_code && p.product_code.toLowerCase().includes(query));
+    });
+  }, [sortedProducts, searchQuery]);
+
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [searchQuery]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -29,8 +64,9 @@ export default function Home({ products, onProductClick, searchQuery, loading })
             No products found matching "{searchQuery}"
           </div>
         ) : (
-          <div className="product-grid">
-            {filteredProducts.map((p, idx) => (
+          <>
+            <div className="product-grid">
+              {displayedProducts.map((p, idx) => (
               <div 
                 key={p.id} 
                 className="animate-slide-up" 
@@ -49,7 +85,29 @@ export default function Home({ products, onProductClick, searchQuery, loading })
                 />
               </div>
             ))}
-          </div>
+            </div>
+
+            {visibleCount < filteredProducts.length && !loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '48px', marginBottom: '24px' }}>
+                <button 
+                  className="btn-primary" 
+                  onClick={() => setVisibleCount(prev => prev + 9)}
+                  style={{ 
+                    padding: '14px 48px', 
+                    borderRadius: '100px', 
+                    fontWeight: 800,
+                    fontSize: '15px',
+                    boxShadow: '0 8px 24px rgba(var(--primary-rgb), 0.2)',
+                    transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  View More
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

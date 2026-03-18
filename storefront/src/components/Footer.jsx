@@ -1,8 +1,10 @@
 import React from 'react';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSettings } from '../context/SettingsContext';
 
 export default function Footer() {
+  const { siteSettings } = useSettings();
   return (
     <footer className="footer">
       <div className="footer-content">
@@ -11,8 +13,8 @@ export default function Footer() {
           {/* Company Info */}
           <div className="footer-column">
             <div className="footer-logo word-logo" style={{ marginBottom: '20px' }}>
-              <span className="word-logo-main">Electro</span>
-              <span className="word-logo-sub">Com</span>
+              <span className="word-logo-main">{siteSettings.siteName.slice(0, 7)}</span>
+              <span className="word-logo-sub">{siteSettings.siteName.slice(7)}</span>
               <div className="logo-indicator"></div>
             </div>
             <p className="footer-description">Your trusted destination for premium electronics and cutting-edge technology.</p>
@@ -66,30 +68,36 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
-          <div className="footer-column">
-            <h4 className="footer-heading">Contact Us</h4>
-            <ul className="footer-contact">
-              <li>
-                <Mail size={16} />
-                <span>support@electrocom.com</span>
-              </li>
-              <li>
-                <Phone size={16} />
-                <span>0536683393 / 0506408074</span>
-              </li>
-              <li>
-                <MapPin size={16} />
-                <span>Accra, Kumasi &amp; Wa, Ghana</span>
-              </li>
-            </ul>
-          </div>
+        </div>
 
+        {/* 3-Column Contact Row */}
+        <div className="footer-contact-row">
+            <div className="contact-item">
+              <Mail size={24} />
+              <div>
+                <strong>Email Us</strong>
+                <span>{siteSettings.siteEmail}</span>
+              </div>
+            </div>
+            <div className="contact-item" style={{ justifyContent: 'center' }}>
+              <Phone size={24} />
+              <div>
+                <strong>Call Us</strong>
+                <span>{siteSettings.phone1} / {siteSettings.phone2}</span>
+              </div>
+            </div>
+            <div className="contact-item" style={{ justifyContent: 'flex-end' }}>
+              <MapPin size={24} />
+              <div>
+                <strong>Visit Us</strong>
+                <span>Accra, Kumasi &amp; Wa, Ghana</span>
+              </div>
+            </div>
         </div>
 
         {/* Footer Bottom */}
         <div className="footer-bottom">
-          <p>&copy; 2026 ElectroCom. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {siteSettings.siteName}. All rights reserved.</p>
           <div className="footer-bottom-links">
             <Link to="/privacy-policy">Privacy Policy</Link>
             <span>•</span>

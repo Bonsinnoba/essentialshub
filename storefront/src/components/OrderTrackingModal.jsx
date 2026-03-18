@@ -3,6 +3,7 @@ import { X, CheckCircle, Clock, Truck, Package, Calendar, MapPin, ExternalLink }
 import { fetchOrderDetails } from '../services/api';
 import { formatRelativeTime, formatDate } from '../utils/dateFormatter';
 
+
 export default function OrderTrackingModal({ orderId, isOpen, onClose }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -182,7 +183,16 @@ export default function OrderTrackingModal({ orderId, isOpen, onClose }) {
                         <div className="flex items-center gap-3">
                            <div className="w-10 h-10 rounded-lg bg-[var(--bg-main)] border border-[var(--border-light)] flex items-center justify-center overflow-hidden">
                               {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                <img 
+                                  src={item.image_url} 
+                                  alt={item.name} 
+                                  style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'contain', 
+                                    borderRadius: '8px' 
+                                  }} 
+                                />
                               ) : (
                                 <Package size={16} className="text-[var(--text-muted)]" />
                               )}

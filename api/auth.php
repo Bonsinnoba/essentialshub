@@ -17,15 +17,11 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
             password_hash VARCHAR(255) NOT NULL,
             phone VARCHAR(20),
             address TEXT,
-            role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'super') DEFAULT 'customer',
+            role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'accountant', 'super') DEFAULT 'customer',
             level INT DEFAULT 1,
             level_name VARCHAR(50) DEFAULT 'Starter',
             avatar_text VARCHAR(10) DEFAULT 'U',
             profile_image LONGTEXT,
-            id_number VARCHAR(50) DEFAULT NULL,
-            id_photo LONGTEXT DEFAULT NULL,
-            id_verified TINYINT(1) DEFAULT 0,
-            id_verified_at DATETIME DEFAULT NULL,
             wallet_balance DECIMAL(10, 2) DEFAULT 0.00,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -33,7 +29,7 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
 
         $cols = $pdo->query("DESCRIBE users")->fetchAll(PDO::FETCH_COLUMN);
         if (!in_array('role', $cols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'super') DEFAULT 'customer' AFTER address");
+            $pdo->exec("ALTER TABLE users ADD COLUMN role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'accountant', 'super') DEFAULT 'customer' AFTER address");
         }
         if (!in_array('wallet_balance', $cols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN wallet_balance DECIMAL(10, 2) DEFAULT 0.00 AFTER id_verified_at");

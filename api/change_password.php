@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Must be authenticated
-$userId = authenticate();
+$userId = authenticate($pdo);
 
 $data = json_decode(file_get_contents('php://input'), true);
 $currentPassword = $data['current_password'] ?? '';

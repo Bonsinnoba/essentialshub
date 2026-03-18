@@ -4,6 +4,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useUser } from '../context/UserContext';
 
+
 export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotificationsClick, onMapClick }) {
   const { user, logout } = useUser();
   const { wishlistItems } = useWishlist();
@@ -45,7 +46,9 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
               style={{ 
                 animationDelay: `${idx * 0.05}s`,
                 animationFillMode: 'both',
-                width: '100%'
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'center'
               }}
             >
               {item.type === 'map' ? (
@@ -90,7 +93,7 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
       </div>
 
       <div className="sidebar-bottom">
-        <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
+        <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.5s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Link to="/settings" className={`sidebar-icon ${isActive('/settings') ? 'active' : ''}`} data-tooltip="Settings" data-tooltip-pos="right" onClick={onClose}>
             <Settings size={24} />
             <span className="sidebar-label">Settings</span>
@@ -99,7 +102,7 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
         
         {user ? (
           <>
-            <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.55s', animationFillMode: 'both' }}>
+            <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.55s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
               <Link to="/profile" className={`sidebar-icon profile-link ${isActive('/profile') ? 'active' : ''}`} data-tooltip="Profile" data-tooltip-pos="right" style={{ padding: '4px' }} onClick={onClose}>
                 <div style={{ 
                   width: '40px', 
@@ -116,7 +119,12 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
                     <img 
                       src={user.profileImage} 
                       alt={user.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        borderRadius: '50%' 
+                      }} 
                     />
                   ) : (
                     <span style={{ color: 'var(--primary-blue)', fontWeight: 700 }}>
@@ -126,7 +134,7 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
                 </div>
               </Link>
             </div>
-            <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.6s', animationFillMode: 'both' }}>
+            <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.6s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
               <div className="sidebar-icon" data-tooltip="Logout" data-tooltip-pos="right" onClick={handleLogout}>
                 <LogOut size={24} color="var(--danger)" />
                 <span className="sidebar-label" style={{ color: 'var(--danger)' }}>Logout</span>
@@ -134,7 +142,7 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
             </div>
           </>
         ) : (
-          <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.55s', animationFillMode: 'both' }}>
+          <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.55s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
             <div className="sidebar-icon" data-tooltip="Login" data-tooltip-pos="right" onClick={() => { navigate('/'); onClose(); }}>
               <User size={24} />
               <span className="sidebar-label">Login</span>

@@ -2,6 +2,11 @@
 // backend/notifications.php
 require_once 'security.php';
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require_once __DIR__ . '/vendor/autoload.php';
+
 /**
  * Centralized Notification Service
  */
@@ -15,66 +20,88 @@ class NotificationService
     }
 
     /**
-     * Send Email via native mail() or SMTP if configured
+     * Send Email via PHPMailer with SMTP support
      */
-    public function sendEmail($to, $subject, $message)
+    public function sendEmail($to, $subject, $message, $altBody = '')
     {
-        $from = $this->config['MAIL_FROM'] ?? 'no-reply@electrocom.com';
-        $headers = "From: {$from}\r\n" .
-            "Reply-To: {$from}\r\n" .
-            "X-Mailer: PHP/" . phpversion();
+        $mail = new PHPMailer(true);
 
-        // Check if we should use a real service or just log
-        if (isset($this->config['SMTP_HOST']) && !empty($this->config['SMTP_HOST'])) {
-            // Placeholder for PHPMailer or similar SMTP library logic
-            logger('info', 'EMAIL_SERVICE', "SMTP configured, attempting to send to {$to}");
+        try {
+            // Check if we should use SMTP
+            if (isset($this->config['SMTP_HOST']) && !empty($this->config['SMTP_HOST'])) {
+                $mail->isSMTP();
+                $mail->Host       = $this->config['SMTP_HOST'];
+                $mail->SMTPAuth   = true;
+                $mail->Username   = $this->config['SMTP_USER'] ?? '';
+                $mail->Password   = $this->config['SMTP_PASS'] ?? '';
+                $mail->SMTPSecure = $this->config['SMTP_ENCRYPTION'] ?? PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = $this->config['SMTP_PORT'] ?? 587;
+                logger('info', 'EMAIL_SERVICE', "SMTP configured, attempting to send to {$to}");
+            } else {
+                // Fallback to native mail() function via PHPMailer
+                $mail->isMail();
+                logger('info', 'EMAIL_SERVICE', "SMTP not configured, falling back to native mail() for {$to}");
+            }
+
+            // Recipients
+            $from = $this->config['MAIL_FROM'] ?? 'no-reply@electrocom.com';
+            $mail->setFrom($from, 'ElectroCom');
+            $mail->addAddress($to);
+
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $message;
+            $mail->AltBody = $altBody ?: strip_tags($message);
+
+            $mail->send();
+            logger('info', 'EMAIL_SERVICE', "Successfully sent email to {$to}");
             return true;
+        } catch (Exception $e) {
+            logger('error', 'EMAIL_SERVICE', "Failed to send email to {$to}: " . $mail->ErrorInfo);
+            
+            // In development, we might want to log the simulated email even on failure
+            if ($this->config['APP_ENV'] === 'development') {
+                logger('info', 'EMAIL_SERVICE', "SIMULATED EMAIL (Fell back due to error) to {$to}: {$message}");
+            }
+            return false;
         }
-
-        // Fallback to native mail()
-        $success = @mail($to, $subject, $message, $headers);
-
-        if ($success) {
-            logger('info', 'EMAIL_SERVICE', "Successfully sent email to {$to} via native mail()");
-        } else {
-            logger('warning', 'EMAIL_SERVICE', "Failed to send email to {$to} via native mail(). Check server configuration.");
-            // Always log for debugging in dev
-            logger('info', 'EMAIL_SERVICE', "SIMULATED EMAIL to {$to}: {$message}");
-        }
-
-        return $success;
     }
 
     /**
-     * Send SMS via provider API
+     * Send SMS via Hubtel API
      */
     public function sendSMS($to, $message)
     {
-        $sid = $this->config['SMS_SID'] ?? '';
-        $token = $this->config['SMS_TOKEN'] ?? '';
-        $from = $this->config['SMS_FROM'] ?? '';
+        $clientId = $this->config['SMS_CLIENT_ID'] ?? '';
+        $clientSecret = $this->config['SMS_CLIENT_SECRET'] ?? '';
+        $from = $this->config['SMS_FROM'] ?? 'ElectroCom';
 
-        if (!$sid || !$token || !$from) {
-            logger('warning', 'SMS_SERVICE', "SMS credentials missing in .env.php. Falling back to log.");
+        if (!$clientId || !$clientSecret) {
+            logger('warning', 'SMS_SERVICE', "Hubtel credentials missing in .env.php. Falling back to log.");
             logger('info', 'SMS_SERVICE', "SIMULATED SMS to {$to}: {$message}");
             return false;
         }
 
-        // Real Twilio SMS API call
-        $url = "https://api.twilio.com/2010-04-01/Accounts/$sid/Messages.json";
-        $auth = base64_encode("$sid:$token");
+        // Hubtel SMS API call (V1)
+        $url = $this->config['SMS_API_URL'] ?? "https://smsc.hubtel.com/v1/messages/send";
+        $auth = base64_encode("$clientId:$clientSecret");
+
+        $postData = [
+            'From' => $from,
+            'To' => $to,
+            'Content' => $message,
+            'Type' => 0 // 0 for Quick Message
+        ];
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'From' => $from,
-            'To' => $to,
-            'Body' => $message
-        ]));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Basic $auth"
+            "Authorization: Basic $auth",
+            "Content-Type: application/json"
         ]);
 
         $response = curl_exec($ch);
@@ -82,10 +109,10 @@ class NotificationService
         curl_close($ch);
 
         if ($httpCode >= 200 && $httpCode < 300) {
-            logger('info', 'SMS_SERVICE', "Successfully sent SMS to {$to} via Twilio");
+            logger('info', 'SMS_SERVICE', "Successfully sent SMS to {$to} via Hubtel");
             return true;
         } else {
-            logger('error', 'SMS_SERVICE', "Twilio API error (Code {$httpCode}): " . $response);
+            logger('error', 'SMS_SERVICE', "Hubtel API error (Code {$httpCode}): " . $response);
             return false;
         }
     }

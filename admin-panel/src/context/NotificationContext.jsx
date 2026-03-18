@@ -6,7 +6,21 @@ export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const addToast = (text, type = 'info') => {
+    const id = Date.now();
+    const newToast = { id, text, type };
+    setToasts(prev => [...prev, newToast]);
+    setTimeout(() => {
+      removeToast(id);
+    }, 4000);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const fetchServerNotifications = async () => {
     try {
@@ -93,7 +107,10 @@ export const NotificationProvider = ({ children }) => {
       markAsRead, 
       markAllAsRead, 
       deleteNotification, 
-      clearAllNotifications 
+      clearAllNotifications,
+      toasts,
+      addToast,
+      removeToast
     }}>
       {children}
     </NotificationContext.Provider>

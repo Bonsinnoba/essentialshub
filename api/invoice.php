@@ -3,7 +3,7 @@
 require_once 'db.php';
 require_once 'security.php';
 
-$userId = authenticate();
+$userId = authenticate($pdo);
 $orderId = (int)($_GET['order_id'] ?? 0);
 
 if ($orderId <= 0) {

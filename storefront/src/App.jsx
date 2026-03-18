@@ -8,9 +8,10 @@ import AuthModal from './components/AuthModal'
 import Footer from './components/Footer'
 import Drawer from './components/Drawer'
 import { X } from 'lucide-react'
+import ToastContainer from './components/ToastContainer'
+import BackToTop from './components/BackToTop'
 import { secureStorage } from './utils/secureStorage';
 
-import { initialProducts } from './constants'; // Keep for structure but unused
 import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -40,13 +41,9 @@ import { fetchOrders, fetchProducts, checkUserStatus } from './services/api';
 import { useUser } from './context/UserContext';
 import { formatRelativeTime, formatDate } from './utils/dateFormatter';
 import MaintenancePage from './pages/MaintenancePage';
-import Verification from './pages/Verification';
 import ResetPassword from './pages/ResetPassword';
 import TrackOrder from './pages/TrackOrder';
 import CMSPage from './pages/CMSPage';
-
-// Helper function for relative time
-// Moved to utils/dateFormatter.js
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -61,7 +58,6 @@ function AppContent() {
   const location = useLocation();
   const { user, logout, authModal, openAuthModal, closeAuthModal } = useUser();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
-  const [loginMessage, setLoginMessage] = useState('');
   const lastFetchRef = React.useRef(0); 
 
   // Check maintenance mode from backend
@@ -102,16 +98,16 @@ function AppContent() {
     }
   }, []);
 
-  // Move maintenance check AFTER hooks
-  // if (isMaintenanceMode) return <MaintenancePage />;
-
-
   const [redirectPath, setRedirectPath] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
   });
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('site_theme') || 'blue';
+  });
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]); // Start empty, fetch from API
@@ -129,10 +125,22 @@ function AppContent() {
 
   useEffect(() => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-    // Sync theme to html/body so the full viewport background matches the app theme
     document.documentElement.classList.toggle('dark-mode', isDarkMode);
     document.body.classList.toggle('dark-mode', isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    // Remove existing theme classes
+    document.documentElement.classList.remove('theme-red', 'theme-green', 'theme-purple');
+    document.body.classList.remove('theme-red', 'theme-green', 'theme-purple');
+    
+    // Add new one if not blue
+    if (theme !== 'blue') {
+      document.documentElement.classList.add(`theme-${theme}`);
+      document.body.classList.add(`theme-${theme}`);
+    }
+    localStorage.setItem('site_theme', theme);
+  }, [theme]);
 
   const productsRef = useRef(products);
 
@@ -142,7 +150,6 @@ function AppContent() {
 
   const loadProducts = async () => {
     try {
-      // Use ref to check current state to avoid stale closures in interval
       if (productsRef.current.length === 0) setLoading(true);
       
       const data = await fetchProducts();
@@ -152,7 +159,6 @@ function AppContent() {
           const formatURL = (url) => {
               if (!url) return null;
               if (url.startsWith('http') || url.startsWith('data:')) return url;
-              // Ensure it doesn't double slash
               return `${API_BASE}${url.startsWith('/') ? url.slice(1) : url}`;
           };
 
@@ -165,7 +171,6 @@ function AppContent() {
               rating: parseFloat(p.rating) || 0
           }));
           
-          // Only update state if data has actually changed
           setProducts(prevProducts => {
             const isDifferent = JSON.stringify(prevProducts) !== JSON.stringify(mappedProducts);
             return isDifferent ? mappedProducts : prevProducts;
@@ -182,12 +187,9 @@ function AppContent() {
     } catch (error) {
       if (error.maintenance) {
         setIsMaintenanceMode(true);
-        return; // Silently fail and let the maintenance page handle it
+        return; 
       }
-      
-      // Only show error notification if we don't have products locally and it's not a background poll
       if (productsRef.current.length === 0 && !maintenanceRef.current) {
-          // addNotification(`API Error: ${error.message}`, "error");
           console.error(`API Error: ${error.message}`);
       }
     } finally {
@@ -196,27 +198,20 @@ function AppContent() {
   };
 
   useEffect(() => {
-    loadProducts(); // Initial load
-
-    // Poll every 60 seconds (reduced from 5s to prevent excessive blinking/re-renders)
+    loadProducts(); 
     const intervalId = setInterval(loadProducts, 60000);
-
-    // Refresh on window focus, but throttle to once every 30s
     const handleFocus = () => {
         if (Date.now() - lastFetchRef.current > 30000) {
             loadProducts();
         }
     };
-    
     window.addEventListener('focus', handleFocus);
-
     return () => {
         clearInterval(intervalId);
         window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
-  // Sync selectedProduct with the latest products data from polling
   useEffect(() => {
     if (selectedProduct) {
       const latest = products.find(p => p.id === selectedProduct.id);
@@ -226,7 +221,6 @@ function AppContent() {
     }
   }, [products, selectedProduct]);
 
-  // Periodic status check for suspension
   useEffect(() => {
     let interval;
     if (user) {
@@ -249,7 +243,7 @@ function AppContent() {
                 alert("Your account has been suspended by an administrator. You will be logged out now.");
                 addNotification("Account Suspended", "error");
             }
-        }, 10000); // Check every 10 seconds
+        }, 10000); 
     }
     return () => clearInterval(interval);
   }, [user, logout]);
@@ -260,9 +254,7 @@ function AppContent() {
             try {
                 const data = await fetchOrders(user.id);
                 setOrders(data);
-            } catch (error) {
-                // Ignore silent error
-            }
+            } catch (error) {}
         };
         loadOrders();
     }
@@ -272,21 +264,28 @@ function AppContent() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
-  // Route Protection Logic
+  // Phase 7: Track product views locally for personalized sorting
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    try {
+      const historyStr = localStorage.getItem('ehub_view_history');
+      const history = historyStr ? JSON.parse(historyStr) : {};
+      history[product.id] = (history[product.id] || 0) + 1;
+      localStorage.setItem('ehub_view_history', JSON.stringify(history));
+    } catch (e) {
+      console.warn('Failed to save view history:', e);
+    }
+  };
+
   useEffect(() => {
-    const protectedRoutes = ['/settings', '/transactions', '/profile', '/orders', '/notifications'];
+    const protectedRoutes = ['/settings', '/transactions', '/profile', '/orders', '/notifications', '/cart'];
     if (protectedRoutes.includes(location.pathname) && !user) {
-       // Save the attempted path
        setRedirectPath(location.pathname);
-       setLoginMessage('Please login to access this page');
-       
        navigate('/');
        openAuthModal('signin');
-       addNotification('Please login to access this page', 'info');
     }
   }, [location.pathname, user, navigate]);
 
-  // Handle navigation after successful login
   useEffect(() => {
     if (user && redirectPath) {
       navigate(redirectPath);
@@ -295,23 +294,11 @@ function AppContent() {
   }, [user, redirectPath, navigate]);
 
   const handleAddToCart = (product, qty, color) => {
-    if (!user) {
-        setLoginMessage('Please login to add items to cart');
-        openAuthModal('signin');
-        addNotification('Please login to add items to cart', 'info');
-        return;
-    }
     addToCart(product, qty, color);
     addNotification(`Added ${product.name} to cart`, 'info');
   };
 
   const handleAddToWishlist = (product) => {
-    if (!user) {
-        setLoginMessage('Please login to manage your wishlist');
-        openAuthModal('signin');
-        addNotification('Please login to use wishlist', 'info');
-        return;
-    }
     toggleWishlist(product);
     const isNowIn = !isInWishlist(product.id);
     addNotification(
@@ -350,18 +337,18 @@ function AppContent() {
 
         <main className="dashboard-grid full-width">
           <Routes>
-            <Route path="/" element={<Home products={products} onProductClick={setSelectedProduct} searchQuery={searchQuery} loading={loading} />} />
-            <Route path="/shop" element={<Shop products={products} onProductClick={setSelectedProduct} searchQuery={searchQuery} loading={loading} />} />
+            <Route path="/" element={<Home products={products} onProductClick={handleProductClick} searchQuery={searchQuery} loading={loading} />} />
+            <Route path="/shop" element={<Shop products={products} onProductClick={handleProductClick} searchQuery={searchQuery} loading={loading} />} />
             <Route path="/cart" element={<Cart />} />
-            <Route path="/favorites" element={<Favorites onProductClick={setSelectedProduct} searchQuery={searchQuery} />} />
+            <Route path="/favorites" element={<Favorites onProductClick={handleProductClick} searchQuery={searchQuery} />} />
             <Route path="/transactions" element={<Transactions searchQuery={searchQuery} />} />
             <Route path="/orders" element={<Orders searchQuery={searchQuery} />} />
             <Route path="/notifications" element={<Notifications searchQuery={searchQuery} />} />
             <Route path="/support" element={<Support searchQuery={searchQuery} />} />
-            <Route path="/settings" element={<Settings searchQuery={searchQuery} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/settings" element={<Settings searchQuery={searchQuery} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} theme={theme} setTheme={setTheme} />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/checkout" element={<Checkout />} />
-            <Route path="/verify-id" element={<Verification />} />
+
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -370,11 +357,7 @@ function AppContent() {
             <Route path="/returns" element={<Returns />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/track" element={<TrackOrder />} />
-          
-            {/* Dynamic CMS Page Route - Keep at the bottom to avoid catching specific routes */}
             <Route path="/p/:slug" element={<CMSPage />} />
-
-            {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -397,7 +380,6 @@ function AppContent() {
         initialMode={authModal.mode}
         onClose={() => {
             closeAuthModal();
-            setLoginMessage('');
         }} 
       />
 
@@ -473,14 +455,14 @@ function AppContent() {
           )}
         </div>
       </Drawer>
+      <ToastContainer />
+      <BackToTop />
     </div>
   );
 }
 
 const AppProviders = ({ children }) => {
   const { user } = useUser();
-  // Using user?.id as a key ensures that all nested providers (Notifications, Cart, etc.) 
-  // fully remount and reset their internal states when the user changes or logs out.
   return (
     <div key={user?.id} style={{ display: 'contents' }}>
       <NotificationProvider>

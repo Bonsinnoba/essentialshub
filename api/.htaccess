@@ -5,7 +5,7 @@
 </FilesMatch>
 
 # Allow access to API endpoints
-<FilesMatch "^(index|login|register|auth|products|get_products|orders|update_profile|verify_payment|admin_.*|get_slider|check_gallery|check_user_status|wallet|delete_account|seed_gallery)\.php$">
+<FilesMatch "^(index|login|register|auth|products|get_products|orders|update_profile|verify_payment|admin_.*|get_slider|check_user_status|wallet|delete_account|coupons|notifications|reviews|wishlist|cart_sync|track_order)\.php$">
     Order Allow,Deny
     Allow from all
 </FilesMatch>

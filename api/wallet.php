@@ -26,7 +26,7 @@ try {
     }
 
     // 1. Authenticate User
-    $userId = authenticate();
+    $userId = authenticate($pdo);
 
     // 2. Fetch Balance from Users table
     $stmt = $pdo->prepare("SELECT wallet_balance FROM users WHERE id = ?");

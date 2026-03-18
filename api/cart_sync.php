@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Only logged in users can have their carts synced (since we need an email to send recovery to)
-    $userId = authenticate(false); // don't exit if fails, just return below
+    $userId = authenticate($pdo, false); // don't exit if fails, just return below
 
     if (!$userId) {
         http_response_code(401);

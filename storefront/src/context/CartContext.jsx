@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
 import { secureStorage } from '../utils/secureStorage';
-import { syncCart } from '../services/api';
+import { syncCart, validateCoupon } from '../services/api';
+import { useNotifications } from './NotificationContext';
 
 const CartContext = createContext();
 
@@ -15,13 +16,22 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const { user } = useUser();
+  const { addNotification } = useNotifications();
 
   const [cartItems, setCartItems] = useState(() => {
     return secureStorage.getItem('cart', user?.id) || [];
   });
 
+  const [appliedCoupon, setAppliedCoupon] = useState(() => {
+    return secureStorage.getItem('appliedCoupon', user?.id) || null;
+  });
+
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
   useEffect(() => {
     secureStorage.setItem('cart', cartItems, user?.id);
+    secureStorage.setItem('appliedCoupon', appliedCoupon, user?.id);
 
     // Sync to backend for Abandoned Cart recovery (fire and forget)
     if (user) {
@@ -39,6 +49,10 @@ export const CartProvider = ({ children }) => {
   }, [cartItems, user]);
 
   const addToCart = (product, quantity = 1, color = 'Default') => {
+    if (!user) {
+        addNotification('Please login to add items to an active cart', 'error');
+        return;
+    }
     setCartItems(prev => {
       const existingItemIndex = prev.findIndex(
         item => item.id === product.id && item.selectedColor === color
@@ -70,7 +84,38 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  const clearCart = () => setCartItems([]);
+  const clearCart = () => {
+    setCartItems([]);
+    setAppliedCoupon(null);
+  };
+
+  const applyCoupon = async (code) => {
+    if (!code.trim()) return;
+    setIsApplyingCoupon(true);
+    setCouponError('');
+    try {
+      const result = await validateCoupon(code, subtotal);
+      if (result.success) {
+        setAppliedCoupon(result.coupon);
+        addNotification('Coupon applied successfully', 'success');
+        return true;
+      } else {
+        setCouponError(result.error || 'Invalid coupon code');
+        return false;
+      }
+    } catch (err) {
+      setCouponError('Error validating coupon. Please try again.');
+      return false;
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError('');
+    addNotification('Coupon removed', 'info');
+  };
 
   const subtotal = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -83,7 +128,12 @@ export const CartProvider = ({ children }) => {
       updateQuantity, 
       clearCart,
       subtotal,
-      cartCount
+      cartCount,
+      appliedCoupon,
+      applyCoupon,
+      removeCoupon,
+      isApplyingCoupon,
+      couponError
     }}>
       {children}
     </CartContext.Provider>

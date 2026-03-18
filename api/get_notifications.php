@@ -8,7 +8,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 // Authenticate user
-$userId = authenticate();
+$userId = authenticate($pdo);
 $role = getUserRole($userId, $pdo);
 
 if ($method === 'GET') {
@@ -21,13 +21,16 @@ if ($method === 'GET') {
                 exit;
             }
 
-            // For admins, we might want to see all notifications or specifically addressed ones
-            // For now, let's fetch all notifications that are of type 'security' or addressed specifically to any admin
+            // Admins should see security, system, and order alerts
+            // We exclude generic welcome messages that are technically 'info' but for customers
             $stmt = $pdo->prepare("
                 SELECT n.*, u.name as user_name 
                 FROM notifications n 
                 LEFT JOIN users u ON n.user_id = u.id 
-                WHERE n.type IN ('security', 'info') OR u.role IN ('admin', 'super', 'branch_admin')
+                WHERE (
+                    (n.type IN ('security', 'system', 'order')) 
+                    OR (n.type = 'info' AND n.title NOT LIKE 'Welcome to%')
+                )
                 ORDER BY n.created_at DESC LIMIT 50
             ");
             $stmt->execute();

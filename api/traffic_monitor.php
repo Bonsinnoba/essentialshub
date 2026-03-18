@@ -1,7 +1,5 @@
 <?php
 // api/traffic_monitor.php
-require_once 'db.php';
-
 // --- Self-healing Schema ---
 if ($config['DB_AUTO_REPAIR'] ?? false) {
     try {
@@ -110,5 +108,10 @@ function monitorTraffic()
 
 // Only monitor if not a preflight request
 if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
-    monitorTraffic();
+    try {
+        monitorTraffic();
+    } catch (\Throwable $e) {
+        // Silently fail traffic monitoring to avoid blocking real users
+        error_log("Traffic Monitor Error: " . $e->getMessage());
+    }
 }

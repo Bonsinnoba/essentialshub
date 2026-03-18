@@ -4,6 +4,8 @@ import { User, Mail, Phone, MapPin, Camera, Star, ShieldCheck, RefreshCcw, Lock 
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationContext';
 import { updateProfile } from '../services/api';
+import AlertModal from '../components/AlertModal';
+
 
 export default function Profile() {
   const { user, updateUser, resetUser } = useUser();
@@ -15,6 +17,13 @@ export default function Profile() {
     email: user?.email || '',
     phone: user?.phone || '',
     address: user?.address || ''
+  });
+
+  const [alert, setAlert] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success'
   });
 
   // Keep form in sync if user state changes externally (like on reset)
@@ -50,19 +59,33 @@ export default function Profile() {
         const response = await updateProfile(formData);
         if (response.success) {
             updateUser(formData);
-            addNotification('Profile updated successfully', 'success');
+            setAlert({
+                isOpen: true,
+                title: 'Profile Updated',
+                message: 'Your personal information has been successfully saved to our servers.',
+                type: 'success'
+            });
         } else {
-            addNotification(response.message || 'Failed to update profile', 'error');
+            setAlert({
+                isOpen: true,
+                title: 'Update Failed',
+                message: response.message || 'We could not save your profile changes. Please try again.',
+                type: 'error'
+            });
         }
     } catch (err) {
-        addNotification('Network error while updating profile', 'error');
+        setAlert({
+            isOpen: true,
+            title: 'Network Error',
+            message: 'A connection problem prevented the update. Please check your internet.',
+            type: 'error'
+        });
     }
   };
 
   const handleReset = async () => {
     if (window.confirm('Are you sure you want to reset your profile to defaults? All changes and your profile image will be removed.')) {
         try {
-            // Send empty data/null flags to backend
             const defaults = {
                 name: 'Guest User', 
                 address: '', 
@@ -72,12 +95,27 @@ export default function Profile() {
             const response = await updateProfile(defaults);
             if (response.success) {
                 resetUser();
-                addNotification('Profile restored to defaults', 'info');
+                setAlert({
+                    isOpen: true,
+                    title: 'Profile Reset',
+                    message: 'Your profile has been restored to factory defaults.',
+                    type: 'info'
+                });
             } else {
-                addNotification('Failed to reset profile server-side', 'error');
+                setAlert({
+                    isOpen: true,
+                    title: 'Reset Failed',
+                    message: 'Failed to reset profile server-side.',
+                    type: 'error'
+                });
             }
         } catch (err) {
-            addNotification('Network error while resetting profile', 'error');
+            setAlert({
+                isOpen: true,
+                title: 'Network Error',
+                message: 'A connection problem prevented the reset.',
+                type: 'error'
+            });
         }
     }
   };
@@ -124,7 +162,12 @@ export default function Profile() {
                     <img 
                         src={user.profileImage} 
                         alt={user.name} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover', 
+                            borderRadius: '50%' 
+                        }} 
                     />
                 ) : (
                     user.avatar || 'BB'
@@ -208,24 +251,23 @@ export default function Profile() {
               </div>
             )}
             
-            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-light)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 800 }}>{user.ordersCount || 0}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orders</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{user.ordersCount || 0}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orders</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 800 }}>{user.reviewsCount || 0}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reviews</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{user.loyalty_points || 0}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Points</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{user.reviewsCount || 0}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reviews</div>
               </div>
             </div>
           </div>
 
-          <div className="card glass" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--success)' }}>
-              <ShieldCheck size={20} />
-              <span style={{ fontWeight: 700 }}>Account Verified</span>
-            </div>
-          </div>
+
         </div>
 
         <div className="card glass" style={{ padding: '32px' }}>
@@ -342,11 +384,17 @@ export default function Profile() {
               </div>
             </div>
 
-            <div style={{ marginTop: '12px', display: 'flex', gap: '16px' }}>
+            <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
               <button 
                 className="btn-primary" 
                 onClick={handleSave}
-                style={{ padding: '14px 32px', borderRadius: '12px', fontWeight: 700, flex: 1 }}
+                style={{ 
+                  padding: '10px 28px', 
+                  borderRadius: '10px', 
+                  fontWeight: 600, 
+                  fontSize: '14px',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' 
+                }}
               >
                 Save Profile
               </button>
@@ -354,18 +402,19 @@ export default function Profile() {
                 className="btn-secondary" 
                 onClick={handleReset}
                 style={{ 
-                  padding: '14px 32px', 
-                  borderRadius: '12px', 
-                  fontWeight: 700, 
+                  padding: '10px 24px', 
+                  borderRadius: '10px', 
+                  fontWeight: 600, 
+                  fontSize: '14px',
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '8px',
                   color: 'var(--danger)',
-                  borderColor: 'var(--danger-bg)',
-                  background: 'var(--danger-bg)'
+                  border: '1px solid rgba(239, 68, 68, 0.1)',
+                  background: 'rgba(239, 68, 68, 0.05)'
                 }}
               >
-                <RefreshCcw size={16} /> Restore Defaults
+                <RefreshCcw size={14} /> Restore Defaults
               </button>
             </div>
           </div>
@@ -379,6 +428,13 @@ export default function Profile() {
           }
         }
       `}} />
+      <AlertModal 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert(prev => ({ ...prev, isOpen: false }))}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 }

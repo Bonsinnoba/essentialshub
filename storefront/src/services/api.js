@@ -67,6 +67,7 @@ export const fetchProducts = async (category = null) => {
         name: decodeHtml(product.name),
         description: decodeHtml(product.description),
         category: decodeHtml(product.category),
+        image: formatImageUrl(product.image_url),
         image_url: formatImageUrl(product.image_url),
         directions: formatImageUrl(product.directions), // Handles PDF uploads
         gallery: Array.isArray(product.gallery)
@@ -320,6 +321,7 @@ export const fetchWishlist = async () => {
             ...product,
             name: decodeHtml(product.name),
             category: decodeHtml(product.category),
+            image: formatImageUrl(product.image),
             image_url: formatImageUrl(product.image)
         }));
     } catch (error) {
@@ -366,5 +368,16 @@ export const trackOrder = async (orderId, email) => {
     } catch (error) {
         console.error('Error tracking order:', error);
         return { success: false, error: 'Network error preventing order tracking.' };
+    }
+};
+
+export const fetchSiteSettings = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/get_site_settings.php`);
+        const result = await response.json();
+        return result.success ? result.data : null;
+    } catch (error) {
+        console.error('Error fetching site settings:', error);
+        return null;
     }
 };

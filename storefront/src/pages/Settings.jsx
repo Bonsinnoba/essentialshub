@@ -3,22 +3,84 @@ import {
   Moon, Sun, Bell, Lock, Globe, Shield, Settings as SettingsIcon, 
   ChevronRight, User, MapPin, CreditCard, ShoppingBag, 
   Trash2, HelpCircle, Eye, EyeOff, Mail, Phone, CreditCard as PaymentIcon,
-  History, DollarSign, Smartphone, Receipt, X, AlertTriangle, KeyRound
+  History, DollarSign, Smartphone, Receipt, X, AlertTriangle, KeyRound,
+  ShieldCheck, CheckCircle, Upload, Camera, Loader
 } from 'lucide-react';
+import AlertModal from '../components/AlertModal';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../context/SettingsContext';
 import { useUser } from '../context/UserContext';
-import { deleteMyAccount, changePassword } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { deleteMyAccount, changePassword, updateProfile } from '../services/api'; // Added updateProfile
+import { useNavigate, Link } from 'react-router-dom'; // Added Link
 
-export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
-  const { addNotification } = useNotifications();
+export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, theme, setTheme }) {
+  const { addNotification, addToast } = useNotifications();
   const { settings, updateSetting, updateCurrency } = useSettings();
-  const { user, logout } = useUser();
+  const { user, updateUser, logout } = useUser(); // Added updateUser
   const navigate = useNavigate();
+
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: user?.name || '',
+    phone: user?.phone || '',
+    address: user?.address || ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [alert, setAlert] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
+
+  // Sync profile form when user context changes
+  React.useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        phone: user.phone || '',
+        address: user.address || ''
+      });
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const result = await updateProfile(profileForm);
+      if (result.success) {
+        updateUser(profileForm);
+        setAlert({
+          isOpen: true,
+          title: 'Profile Updated',
+          message: 'Your profile changes have been successfully saved.',
+          type: 'success'
+        });
+        setIsEditingProfile(false);
+      } else {
+        setAlert({
+          isOpen: true,
+          title: 'Update Failed',
+          message: result.message || 'We could not save your profile changes.',
+          type: 'error'
+        });
+      }
+    } catch {
+      setAlert({
+        isOpen: true,
+        title: 'Network Error',
+        message: 'A connection problem prevented the update.',
+        type: 'error'
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+// ... (rest of the state/hooks)
 
   // Change password modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -27,6 +89,8 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
   const [pwError, setPwError] = useState('');
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+
+
 
   // ── Change Password ──────────────────────────────────────────────
   const openPasswordModal = () => {
@@ -152,7 +216,16 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
     <button 
       className={`btn-${type}`} 
       onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
-      style={{ padding: '8px 16px', borderRadius: '10px', fontWeight: 600, fontSize: '13px' }}
+      style={{ 
+        padding: '6px 12px', 
+        borderRadius: '8px', 
+        fontWeight: 700, 
+        fontSize: '11px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        width: '15%',
+        minWidth: '85px'
+      }}
     >
       {label}
     </button>
@@ -160,7 +233,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
 
   const SettingCard = ({ title, icon: Icon, children }) => (
     <div className="card glass setting-card" style={{ 
-      padding: '28px 16px', display: 'flex', flexDirection: 'column', gap: '24px',
+      padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: '20px',
       transition: 'all 0.3s ease', width: '100%', boxSizing: 'border-box'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -190,19 +263,76 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {/* Account Section */}
       {shouldShow('Account Information') && (
         <SettingCard title="Account Information" icon={User}>
-          <SettingRow 
-            icon={Mail} title="Email Address" description={user?.email || 'primary@electrocom.com'}
-            action={<ActionButton label="Change" onClick={() => handleAction("Email Change", "A verification link has been sent to your new address.")} />} 
-          />
-          <SettingRow 
-            icon={Phone} title="Phone Number" description={user?.phone || '+233 53 668 3393'}
-            action={<ActionButton label="Change" onClick={() => handleAction("Phone Change", "OTP requested for verification.")} />} 
-          />
-          <SettingRow 
-            icon={MapPin} title="Shipping Addresses" description="Manage saved addresses"
-            onClick={() => handleAction("Addresses", "Redirecting to address manager...")}
-            action={<ChevronRight size={18} color="var(--text-muted)" />} 
-          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Update your personal details and delivery address.
+            </span>
+            <button 
+              className={isEditingProfile ? "btn-primary" : "btn-secondary"}
+              onClick={() => isEditingProfile ? handleSaveProfile() : setIsEditingProfile(true)}
+              disabled={isSavingProfile}
+              style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '12px', fontWeight: 600 }}
+            >
+              {isSavingProfile ? 'Saving...' : (isEditingProfile ? 'Save Changes' : 'Edit Profile')}
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gap: '8px' }}>
+            <SettingRow 
+              icon={User} title="Full Name" 
+              description={isEditingProfile ? null : (user?.name || 'Guest User')}
+              action={isEditingProfile ? (
+                <input 
+                  type="text" 
+                  value={profileForm.name} 
+                  onChange={(e) => setProfileForm(p => ({ ...p, name: e.target.value }))}
+                  className="input-premium"
+                  style={{ padding: '8px 12px', fontSize: '13px', width: '200px' }}
+                />
+              ) : null}
+            />
+            <SettingRow 
+              icon={Mail} title="Email Address" 
+              description={user?.email || 'primary@electrocom.com'}
+              action={<span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>PERMANENT</span>} 
+            />
+            <SettingRow 
+              icon={Phone} title="Phone Number" 
+              description={isEditingProfile ? null : (user?.phone || '+233 53 668 3393')}
+              action={isEditingProfile ? (
+                <input 
+                  type="tel" 
+                  value={profileForm.phone} 
+                  onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                  className="input-premium"
+                  style={{ padding: '8px 12px', fontSize: '13px', width: '200px' }}
+                  disabled={!!user?.phone}
+                />
+              ) : (user?.phone ? <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>PERMANENT</span> : null)} 
+            />
+            <SettingRow 
+              icon={MapPin} title="Shipping Address" 
+              description={isEditingProfile ? null : (user?.address || 'Set your default address')}
+              action={isEditingProfile ? (
+                <input 
+                  type="text" 
+                  value={profileForm.address} 
+                  onChange={(e) => setProfileForm(p => ({ ...p, address: e.target.value }))}
+                  className="input-premium"
+                  style={{ padding: '8px 12px', fontSize: '13px', width: '200px' }}
+                />
+              ) : null}
+            />
+          </div>
+          {isEditingProfile && (
+            <button 
+              className="btn-outline" 
+              onClick={() => setIsEditingProfile(false)}
+              style={{ marginTop: '8px', padding: '8px', fontSize: '12px', width: '100%' }}
+            >
+              Cancel Editing
+            </button>
+          )}
         </SettingCard>
       )}
 
@@ -211,16 +341,17 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         <SettingCard title="Shopping & Orders" icon={ShoppingBag}>
           <SettingRow 
             icon={Eye} title="Order Tracking" description="Real-time SMS updates"
-            action={<Toggle checked={settings.orderTracking} onChange={() => handleToggle('orderTracking')} />} 
+            action={<Toggle checked={settings.sms_tracking} onChange={() => handleToggle('sms_tracking')} />} 
           />
           <SettingRow 
             icon={History} title="Purchase History" description="Manage your previous orders"
-            onClick={() => handleAction("History", "Opening order archive...")}
+            onClick={() => navigate('/orders')}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
           <SettingRow 
             icon={HelpCircle} title="Return Policy" description="30-day money-back guarantee"
-            action={<ActionButton label="View" onClick={() => handleAction("Returns", "Showing detailed return policy.")} />} 
+            onClick={() => navigate('/returns')}
+            action={<ActionButton label="View" onClick={() => navigate('/returns')} />} 
           />
         </SettingCard>
       )}
@@ -230,7 +361,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         <SettingCard title="Payments & Transactions" icon={Receipt}>
           <SettingRow 
             icon={PaymentIcon} title="Payment Methods" description="Visa, PayPal, Mobile Money"
-            onClick={() => handleAction("Payments", "Opening secure payment manager...")}
+            onClick={() => navigate('/transactions')}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
           />
           <SettingRow 
@@ -268,11 +399,11 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         <SettingCard title="Notifications" icon={Bell}>
           <SettingRow 
             icon={Mail} title="Email Alerts" description="Order confirmations & receipts"
-            action={<Toggle checked={settings.emailNotif} onChange={() => handleToggle('emailNotif')} />} 
+            action={<Toggle checked={settings.email_notif} onChange={() => handleToggle('email_notif')} />} 
           />
           <SettingRow 
             icon={Smartphone} title="Push Notifications" description="Flash sales and promo alerts"
-            action={<Toggle checked={settings.pushNotif} onChange={() => handleToggle('pushNotif')} />} 
+            action={<Toggle checked={settings.push_notif} onChange={() => handleToggle('push_notif')} />} 
           />
         </SettingCard>
       )}
@@ -280,9 +411,10 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
       {/* Security Section */}
       {shouldShow('Security & Privacy') && (
         <SettingCard title="Security & Privacy" icon={Shield}>
+
           <SettingRow 
             icon={Lock} title="2-Step Verification" description="Enhanced account protection"
-            action={<Toggle checked={settings.twoFactor} onChange={() => handleToggle('twoFactor')} />} 
+            action={<Toggle checked={settings.two_factor_enabled} onChange={() => handleToggle('two_factor_enabled')} />} 
           />
           <SettingRow 
             icon={KeyRound} title="Change Password" description="Update your account password"
@@ -290,8 +422,8 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
           />
           <SettingRow 
             icon={Eye} title="Privacy Guard" description="Manage personal data usage"
-            onClick={() => handleAction("Privacy", "Opening data control center...")}
-            action={<ActionButton label="Manage" />} 
+            onClick={() => navigate('/privacy-policy')}
+            action={<ActionButton label="Manage" onClick={() => navigate('/privacy-policy')} />} 
           />
           <SettingRow 
             icon={Trash2} title="Account Deletion" description="Permanently remove your data"
@@ -299,7 +431,16 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
             action={
               <span 
                 onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }} 
-                style={{ color: '#ef4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                style={{ 
+                  color: '#ef4444', 
+                  fontSize: '12px', 
+                  fontWeight: 600, 
+                  cursor: 'pointer',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  background: 'rgba(239, 68, 68, 0.05)',
+                  border: '1px solid rgba(239, 68, 68, 0.1)'
+                }}
               >
                 Delete
               </span>
@@ -316,6 +457,42 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
             description={`Currently in ${isDarkMode ? 'Dark' : 'Light'} mode`}
             action={<ActionButton label={isDarkMode ? "Light Mode" : "Dark Mode"} onClick={toggleDarkMode} />} 
           />
+          <div style={{ padding: '12px', borderTop: '1px solid var(--border-light)', marginTop: '8px' }}>
+            <label style={{ display: 'block', marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>Brand Accent Color</label>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {[
+                { id: 'blue', color: '#3b82f6', label: 'Classic Blue' },
+                { id: 'red', color: '#ef4444', label: 'Vibrant Red' },
+                { id: 'green', color: '#22c55e', label: 'Nature Green' },
+                { id: 'purple', color: '#8b5cf6', label: 'Royal Purple' }
+              ].map((t) => (
+                <div 
+                  key={t.id}
+                  onClick={() => {
+                    setTheme(t.id);
+                    addToast(`Theme switched to ${t.label}`, 'success');
+                  }}
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '50%', 
+                    background: t.color, 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: theme === t.id ? '3px solid var(--text-main)' : '2px solid transparent',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: theme === t.id ? '0 0 12px rgba(0,0,0,0.2)' : 'none',
+                    transform: theme === t.id ? 'scale(1.15)' : 'scale(1)'
+                  }}
+                  title={t.label}
+                >
+                  {theme === t.id && <CheckCircle size={18} color="white" />}
+                </div>
+              ))}
+            </div>
+          </div>
           <SettingRow 
             icon={Globe} title="Language" description={settings.language}
             action={
@@ -544,6 +721,8 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
         </div>
       )}
 
+
+      
       <style dangerouslySetInnerHTML={{ __html: `
         @media (min-width: 1024px) {
           .settings-page {
@@ -562,22 +741,31 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode }) {
           background: rgba(255, 255, 255, 0.03);
         }
         .btn-danger {
-          background: linear-gradient(135deg, #ef4444, #dc2626);
+          background: #ef4444;
           color: white;
           border: none;
-          border-radius: 10px;
-          padding: 10px 20px;
+          border-radius: 8px;
+          padding: 8px 16px;
           font-weight: 600;
-          font-size: 14px;
+          font-size: 13px;
           cursor: pointer;
           transition: all 0.2s ease;
         }
         .btn-danger:hover {
-          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          background: #dc2626;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
       `}} />
+      <AlertModal 
+        isOpen={alert.isOpen}
+        onClose={() => setAlert(prev => ({ ...prev, isOpen: false }))}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 }
+
+
