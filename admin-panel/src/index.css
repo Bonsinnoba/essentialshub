@@ -735,11 +735,23 @@ body {
 }
 
 /* Theme Overrides - Defined last to win over dark-mode reset if needed */
-.theme-red {
-    --primary-blue: #dc2626;
-    --primary-blue-rgb: 220, 38, 38;
-    --accent-blue: #ef4444;
-    --accent-blue-rgb: 239, 68, 68;
+.theme-yellow {
+    --primary-blue: #fbbf24;
+    --primary-blue-rgb: 251, 191, 36;
+    --accent-blue: #f59e0b;
+    --accent-blue-rgb: 245, 158, 11;
+}
+
+/* Contrast Overrides for Yellow Theme */
+.theme-yellow .sidebar-nav-link.active,
+.theme-yellow .btn-primary,
+.theme-yellow .dark-mode .btn-primary {
+    color: #0f172a !important; /* Dark text on yellow for readability */
+}
+
+.theme-yellow .sidebar-nav-link.active .sidebar-icon,
+.theme-yellow .btn-primary svg {
+    color: #0f172a !important;
 }
 
 .theme-green {
@@ -755,3 +767,4 @@ body {
     --accent-blue: #8b5cf6;
     --accent-blue-rgb: 139, 92, 246;
 }
+

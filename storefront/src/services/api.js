@@ -1,3 +1,5 @@
+import { secureStorage } from '../utils/secureStorage';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
@@ -23,12 +25,13 @@ const formatImageUrl = (url) => {
 
 /**
  * Helper to get authentication headers
- * Note: Authorization header is now handled implicitly via HttpOnly cookies.
- * We only need to ensure credentials: 'include' is set in fetch.
+ * Adds X-Session-Token as a robust fallback for cross-origin cookie issues.
  */
 const getAuthHeaders = () => {
+    const token = secureStorage.getItem('token', 'shared');
     return {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(token ? { 'X-Session-Token': token } : {})
     };
 };
 
@@ -44,13 +47,25 @@ const getFetchOptions = (options = {}) => {
     };
 };
 
+/**
+ * Global fetch wrapper that passively intercepts 401 Unauthorized responses
+ * and triggers a global logout event instead of relying on wasteful 10-second background polling.
+ */
+const apiFetch = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    if (response.status === 401) {
+        window.dispatchEvent(new Event('auth_unauthorized'));
+    }
+    return response;
+};
+
 export const fetchProducts = async (category = null) => {
     const url = category
         ? `${API_BASE_URL}/get_products.php?category=${encodeURIComponent(category)}&_t=${Date.now()}`
         : `${API_BASE_URL}/get_products.php?_t=${Date.now()}`;
 
 
-    const response = await fetch(url, getFetchOptions());
+    const response = await apiFetch(url, getFetchOptions());
     if (response.status === 503) {
         const err = new Error('Maintenance Mode');
         err.maintenance = true;
@@ -77,7 +92,7 @@ export const fetchProducts = async (category = null) => {
 };
 
 export const registerUser = async (userData) => {
-    const response = await fetch(`${API_BASE_URL}/register.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/register.php`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify(userData),
     }));
@@ -86,7 +101,7 @@ export const registerUser = async (userData) => {
 };
 
 export const verifyUser = async (userId, code) => {
-    const response = await fetch(`${API_BASE_URL}/verify.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/verify.php`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify({ user_id: userId, code }),
     }));
@@ -94,7 +109,7 @@ export const verifyUser = async (userId, code) => {
 };
 
 export const loginUser = async (credentials) => {
-    const response = await fetch(`${API_BASE_URL}/login.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/login.php`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify(credentials),
     }));
@@ -104,7 +119,7 @@ export const loginUser = async (credentials) => {
 
 export const logoutUser = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/logout.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/logout.php`, getFetchOptions({
             method: 'POST'
         }));
         return await response.json();
@@ -114,7 +129,7 @@ export const logoutUser = async () => {
 };
 
 export const forgotPassword = async (email, method = 'email') => {
-    const response = await fetch(`${API_BASE_URL}/forgot_password.php`, {
+    const response = await apiFetch(`${API_BASE_URL}/forgot_password.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, method }),
@@ -124,7 +139,7 @@ export const forgotPassword = async (email, method = 'email') => {
 
 export const changePassword = async (currentPassword, newPassword) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/change_password.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/change_password.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
         }));
@@ -137,7 +152,7 @@ export const changePassword = async (currentPassword, newPassword) => {
 
 export const resetPassword = async (resetData) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/reset_password.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/reset_password.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify(resetData),
         }));
@@ -151,7 +166,7 @@ export const resetPassword = async (resetData) => {
 
 export const updateProfile = async (profileData) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/update_profile.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/update_profile.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify(profileData),
         }));
@@ -165,7 +180,7 @@ export const updateProfile = async (profileData) => {
 
 export const createOrder = async (orderData) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/orders.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/orders.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify(orderData),
         }));
@@ -179,7 +194,7 @@ export const createOrder = async (orderData) => {
 
 export const fetchOrders = async (userId) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/orders.php?user_id=${userId}`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/orders.php?user_id=${userId}`, getFetchOptions());
         if (response.status === 503) return []; // Silent during maintenance
         if (!response.ok) throw new Error('Failed to fetch orders');
         const result = await response.json();
@@ -192,7 +207,7 @@ export const fetchOrders = async (userId) => {
 
 export const fetchOrderDetails = async (orderId) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/orders.php?order_id=${orderId}`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/orders.php?order_id=${orderId}`, getFetchOptions());
         if (response.status === 503) throw new Error('Maintenance Mode');
         if (!response.ok) throw new Error('Failed to fetch order details');
         const result = await response.json();
@@ -205,7 +220,7 @@ export const fetchOrderDetails = async (orderId) => {
 
 export const checkUserStatus = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/check_user_status.php`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/check_user_status.php`, getFetchOptions());
         if (response.status === 503) return { success: false, maintenance: true };
         if (!response.ok) {
             // If 401, token might be invalid
@@ -221,7 +236,7 @@ export const checkUserStatus = async () => {
 
 export const deleteMyAccount = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/delete_account.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/delete_account.php`, getFetchOptions({
             method: 'POST'
         }));
         return await response.json();
@@ -233,7 +248,7 @@ export const deleteMyAccount = async () => {
 
 export const getWallet = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallet.php`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/wallet.php`, getFetchOptions());
         if (!response.ok) throw new Error('Failed to fetch wallet info');
         return await response.json();
     } catch (error) {
@@ -244,7 +259,7 @@ export const getWallet = async () => {
 
 export const verifyPayment = async (reference, type = 'wallet_topup', orderId = null) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/verify_payment.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/verify_payment.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify({ reference, type, order_id: orderId })
         }));
@@ -258,7 +273,7 @@ export const verifyPayment = async (reference, type = 'wallet_topup', orderId = 
 };
 
 export const fetchSlides = async () => {
-    const response = await fetch(`${API_BASE_URL}/get_slider.php?_t=${Date.now()}`);
+    const response = await apiFetch(`${API_BASE_URL}/get_slider.php?_t=${Date.now()}`);
 
     if (response.status === 503) return [];
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
@@ -277,7 +292,7 @@ export const fetchSlides = async () => {
 // --- Reviews ---
 export const fetchProductReviews = async (productId) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/reviews.php?product_id=${productId}`);
+        const response = await apiFetch(`${API_BASE_URL}/reviews.php?product_id=${productId}`);
         if (!response.ok) throw new Error('Failed to fetch reviews');
         const result = await response.json();
         return result.success ? result.data : { reviews: [], average_rating: 0, total_reviews: 0 };
@@ -288,7 +303,7 @@ export const fetchProductReviews = async (productId) => {
 };
 
 export const submitReview = async (productId, rating, comment) => {
-    const response = await fetch(`${API_BASE_URL}/reviews.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/reviews.php`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify({ product_id: productId, rating, comment }),
     }));
@@ -302,7 +317,7 @@ export const getInvoiceUrl = (orderId) => {
 
 // --- Coupons ---
 export const validateCoupon = async (code, cartTotal) => {
-    const response = await fetch(`${API_BASE_URL}/coupons.php?action=validate`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/coupons.php?action=validate`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify({ code, cartTotal })
     }));
@@ -313,7 +328,7 @@ export const validateCoupon = async (code, cartTotal) => {
 // --- Wishlist ---
 export const fetchWishlist = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions());
         if (!response.ok) throw new Error('Failed to fetch wishlist');
         const result = await response.json();
         const items = result.success ? result.items : [];
@@ -331,7 +346,7 @@ export const fetchWishlist = async () => {
 };
 
 export const addToWishlist = async (productId) => {
-    const response = await fetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions({
         method: 'POST',
         body: JSON.stringify({ product_id: productId })
     }));
@@ -339,7 +354,7 @@ export const addToWishlist = async (productId) => {
 };
 
 export const removeFromWishlist = async (productId) => {
-    const response = await fetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions({
+    const response = await apiFetch(`${API_BASE_URL}/wishlist.php`, getFetchOptions({
         method: 'DELETE',
         body: JSON.stringify({ product_id: productId })
     }));
@@ -349,7 +364,7 @@ export const removeFromWishlist = async (productId) => {
 // --- Cart ---
 export const syncCart = async (cartItems) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/cart_sync.php`, getFetchOptions({
+        const response = await apiFetch(`${API_BASE_URL}/cart_sync.php`, getFetchOptions({
             method: 'POST',
             body: JSON.stringify({ cart: cartItems })
         }));
@@ -363,7 +378,7 @@ export const syncCart = async (cartItems) => {
 // --- Order Tracking ---
 export const trackOrder = async (orderId, email) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/track_order.php?order_id=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`, getFetchOptions());
+        const response = await apiFetch(`${API_BASE_URL}/track_order.php?order_id=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`, getFetchOptions());
         return await response.json();
     } catch (error) {
         console.error('Error tracking order:', error);
@@ -373,7 +388,7 @@ export const trackOrder = async (orderId, email) => {
 
 export const fetchSiteSettings = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/get_site_settings.php`);
+        const response = await apiFetch(`${API_BASE_URL}/get_site_settings.php`);
         const result = await response.json();
         return result.success ? result.data : null;
     } catch (error) {

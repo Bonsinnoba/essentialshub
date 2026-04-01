@@ -3,7 +3,7 @@ import {
   TrendingUp, Activity, Globe, ShieldCheck,
   AlertTriangle, RefreshCw, ArrowUpRight,
   Package, Users, ShoppingCart, Zap, Server, Database,
-  HardDrive, Cpu, FileText, Github, Facebook, Chrome, Mail
+  HardDrive, Cpu, FileText, Github, Chrome, Mail
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
@@ -451,8 +451,8 @@ export default function Dashboard() {
             {data?.auth_origins?.length ? (
               <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                 {data.auth_origins.map((o, i) => {
-                  const COLORS = { local:'#3b82f6', google:'#ef4444', github:'#6366f1', facebook:'#1877f2' };
-                  const ICONS  = { local:<Mail size={14}/>, google:<Chrome size={14}/>, github:<Github size={14}/>, facebook:<Facebook size={14}/> };
+                  const COLORS = { local:'#3b82f6', google:'#ef4444', github:'#6366f1' };
+                  const ICONS  = { local:<Mail size={14}/>, google:<Chrome size={14}/>, github:<Github size={14}/> };
                   const total  = data.auth_origins.reduce((s, r) => s + parseInt(r.count), 0) || 1;
                   const pct    = Math.round((parseInt(o.count) / total) * 100);
                   const col    = COLORS[o.provider] || '#64748b';

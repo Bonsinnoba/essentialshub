@@ -150,7 +150,7 @@ export default function Settings() {
               <div style={{ display: 'flex', gap: '12px' }}>
                 {[
                   { id: 'blue', color: '#1e3a8a', label: 'Classic Blue' },
-                  { id: 'red', color: '#dc2626', label: 'Vibrant Red' },
+                  { id: 'yellow', color: '#fbbf24', label: 'Golden Yellow' },
                   { id: 'green', color: '#16a34a', label: 'Nature Green' },
                   { id: 'purple', color: '#7c3aed', label: 'Royal Purple' }
                 ].map((t) => (

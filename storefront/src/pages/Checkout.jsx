@@ -11,7 +11,7 @@ import { usePaystackPayment } from 'react-paystack';
 
 export default function Checkout() {
   const { cartItems, subtotal, clearCart, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   const { balance, deductBalance, addTransaction } = useWallet();
   const { user } = useUser();
   const navigate = useNavigate();
@@ -130,7 +130,7 @@ export default function Checkout() {
 
         if (response.success) {
 
-            addNotification('Payment successful! Order placed.', 'success');
+            addToast('Payment successful! Order placed.', 'success');
             clearCart();
             navigate('/');
         } else {
@@ -138,7 +138,7 @@ export default function Checkout() {
         }
       } catch (error) {
           console.error(error);
-          addNotification(error.message || 'Failed to place order', 'error');
+          addToast(error.message || 'Failed to place order', 'error');
       } finally {
           setLoading(false);
       }
@@ -146,7 +146,7 @@ export default function Checkout() {
 
   const onClose = () => {
       setLoading(false);
-      addNotification('Payment cancelled', 'info');
+      addToast('Payment cancelled', 'info');
   };
 
   const handleChange = (e) => {
@@ -176,7 +176,7 @@ export default function Checkout() {
         // Trigger Paystack
         initializePayment(onSuccess, onClose);
     } else {
-        addNotification('Payment method not supported yet', 'info');
+        addToast('Payment method not supported yet', 'info');
         setLoading(false);
     }
   };

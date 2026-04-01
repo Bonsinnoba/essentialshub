@@ -37,8 +37,12 @@ try {
     $params = [];
 
     if (isset($data['name'])) {
+        $cleanName = sanitizeInput($data['name']);
         $updates[] = "name = ?";
-        $params[] = sanitizeInput($data['name']);
+        $params[] = $cleanName;
+        
+        $updates[] = "avatar_text = ?";
+        $params[] = generateInitials($cleanName);
     }
 
     if (isset($data['email'])) {
@@ -83,11 +87,6 @@ try {
         $params[] = $data['sms_tracking'] ? 1 : 0;
     }
 
-    if (isset($data['two_factor_enabled'])) {
-        $updates[] = "two_factor_enabled = ?";
-        $params[] = $data['two_factor_enabled'] ? 1 : 0;
-    }
-
     if (isset($data['theme'])) {
         $updates[] = "theme = ?";
         $params[] = sanitizeInput($data['theme']);
@@ -106,7 +105,7 @@ try {
 
     if ($stmt->execute($params)) {
         // Fetch updated user data to return
-        $fetchStmt = $pdo->prepare("SELECT id, name, email, phone, address, level, level_name, avatar_text, profile_image, status, role, email_notif, push_notif, sms_tracking, two_factor_enabled, theme FROM users WHERE id = ?");
+        $fetchStmt = $pdo->prepare("SELECT id, name, email, phone, address, level, level_name, avatar_text, profile_image, status, role, email_notif, push_notif, sms_tracking, theme FROM users WHERE id = ?");
         $fetchStmt->execute([(int)$userId]);
         $user = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -130,13 +129,12 @@ try {
                     'level' => $user['level'] ?? 1,
                     'levelName' => $user['level_name'] ?? 'Starter',
                     'avatar' => $user['avatar_text'] ?? '',
-                    'profileImage' => $user['profile_image'] ?? null,
+                    'profileImage' => (strlen($user['profile_image'] ?? '') > 50000) ? null : ($user['profile_image'] ?? null),
                     'status' => $user['status'],
                     'role' => $user['role'],
                     'email_notif' => (bool)($user['email_notif'] ?? true),
                     'push_notif' => (bool)($user['push_notif'] ?? true),
                     'sms_tracking' => (bool)($user['sms_tracking'] ?? true),
-                    'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false),
                     'theme' => $user['theme'] ?? 'blue'
                 ]
             ]

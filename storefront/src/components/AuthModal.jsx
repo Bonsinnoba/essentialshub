@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, User, Lock, Mail, LogIn, UserPlus, Phone, Loader, Globe, Eye, EyeOff, Facebook, Chrome, Github, ArrowLeft } from 'lucide-react';
-import { loginUser, registerUser, verifyUser, forgotPassword } from '../services/api';
+import { X, User, Lock, Mail, LogIn, UserPlus, Phone, Loader, Globe, Eye, EyeOff, Chrome, Github, ArrowLeft } from 'lucide-react';
+import { loginUser, registerUser, verifyUser, forgotPassword, resetPassword } from '../services/api';
 import { useUser } from '../context/UserContext';
 
 
@@ -22,50 +22,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
   const [showPassword, setShowPassword] = useState(false);
   const { updateUser } = useUser();
   
-  // process social login callback parameters if present
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('social_token');
-    const err = params.get('social_error');
-    const encodedUser = params.get('social_user');
-    if (token) {
-      // Note: the auth token is already stored in an HttpOnly cookie by the server.
-      // Do NOT store it in localStorage (XSS risk). Only update the user context.
-      if (encodedUser) {
-        try {
-          const rawUser = JSON.parse(atob(encodedUser));
-          // Normalize field names from PHP snake_case to match local user model
-          const userObj = {
-            id: rawUser.id,
-            name: rawUser.name,
-            email: rawUser.email,
-            phone: rawUser.phone || '',
-            address: rawUser.address || '',
-            level: rawUser.level || 1,
-            levelName: rawUser.level_name || 'Starter',
-            avatar: rawUser.avatar_text || (rawUser.name ? rawUser.name.slice(0, 2).toUpperCase() : '??'),
-            profileImage: rawUser.profile_image || null,
-            role: rawUser.role || 'customer',
-            email_notif: rawUser.email_notif !== undefined ? Boolean(rawUser.email_notif) : true,
-            push_notif: rawUser.push_notif !== undefined ? Boolean(rawUser.push_notif) : true,
-            sms_tracking: rawUser.sms_tracking !== undefined ? Boolean(rawUser.sms_tracking) : true,
-            two_factor_enabled: Boolean(rawUser.two_factor_enabled),
-            theme: rawUser.theme || 'blue',
-          };
-          updateUser(userObj);
-        } catch (e) {
-          console.warn('Failed to parse social user', e);
-        }
-      }
-      // clean up query string to avoid reprocessing
-      window.history.replaceState(null, '', window.location.pathname);
-      onClose && onClose();
-    }
-    if (err) {
-      setError(err);
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }, []);
+  // AuthModal focused on local signin/signup
 
   const [formData, setFormData] = useState({
     name: '',
@@ -86,6 +43,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordMethod, setForgotPasswordMethod] = useState('email'); // 'email' or 'sms'
   const [forgotPasswordStatus, setForgotPasswordStatus] = useState({ type: '', message: '' });
+  const [resetOtpStep, setResetOtpStep] = useState(false);
+  const [resetOtp, setResetOtp] = useState('');
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [confirmResetPassword, setConfirmResetPassword] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -183,13 +144,45 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
         const response = await forgotPassword(forgotPasswordEmail, forgotPasswordMethod);
         if (response.success) {
             setForgotPasswordStatus({ type: 'success', message: response.message });
+            setResetOtpStep(true);
         } else {
-            setForgotPasswordStatus({ type: 'error', message: response.message || 'Failed to send reset link.' });
+            setForgotPasswordStatus({ type: 'error', message: response.message || 'Failed to send reset code.' });
         }
     } catch (err) {
         setForgotPasswordStatus({ type: 'error', message: 'Connection error. Please try again.' });
     } finally {
         setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetOtp || !newResetPassword || newResetPassword !== confirmResetPassword) {
+      if (newResetPassword !== confirmResetPassword) setForgotPasswordStatus({ type: 'error', message: "Passwords do not match." });
+      return;
+    }
+    setLoading(true);
+    setForgotPasswordStatus({ type: '', message: '' });
+    try {
+      const response = await resetPassword({ email: forgotPasswordEmail, token: resetOtp, password: newResetPassword });
+      if (response.success) {
+        setForgotPasswordStatus({ type: 'success', message: response.message });
+        setTimeout(() => {
+           setIsForgotPassword(false);
+           setResetOtpStep(false);
+           setResetOtp('');
+           setNewResetPassword('');
+           setConfirmResetPassword('');
+           setForgotPasswordEmail('');
+           setForgotPasswordStatus({ type: '', message: '' });
+        }, 3000);
+      } else {
+        setForgotPasswordStatus({ type: 'error', message: response.message });
+      }
+    } catch (err) {
+      setForgotPasswordStatus({ type: 'error', message: 'Connection error. Please try again.' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -201,9 +194,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     try {
       const response = await verifyUser(tempUser.id, verificationCode);
       if (response.success) {
-        // updateUser persists via secureStorage internally — no direct localStorage needed
-        updateUser(tempUser);
-        onClose(tempUser);
+        // use response.data.user because verify.php now returns the FULL user including token
+        updateUser(response.data.user);
+        onClose(response.data.user);
         setFormData({ name: '', email: '', phone: '', country: 'Ghana', password: '', confirmPassword: '', verification_method: 'email' });
         setVerificationStep(false);
         setTempUser(null);
@@ -363,7 +356,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
             <form onSubmit={handleSubmit} className="animate-fade-in">
               <h1>Sign In</h1>
               <div className="social-container">
-                <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/social_auth.php?provider=facebook`} className="social" title="Sign in with Facebook"><Facebook size={20} /></a>
                 <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/social_auth.php?provider=google`} className="social" title="Sign in with Google"><Chrome size={20} /></a>
                 <a href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/social_auth.php?provider=github`} className="social" title="Sign in with GitHub" style={{ color: '#333' }}><Github size={20} /></a>
               </div>
@@ -478,33 +470,88 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                 </button>
               </div>
 
-              <form onSubmit={handleForgotPassword}>
-                <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label><Mail size={14} /> Registered Email</label>
-                  <div className="input-wrapper">
-                    <input 
-                      type="email" 
-                      value={forgotPasswordEmail} 
-                      onChange={(e) => setForgotPasswordEmail(e.target.value)} 
-                      placeholder="Enter your account email" 
-                      required 
-                      autoFocus
-                    />
-                  </div>
-                  {forgotPasswordMethod === 'sms' && (
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      We'll send the reset link to the phone number linked to this email.
-                    </p>
-                  )}
-                </div>
-                <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
-                  {loading ? <Loader className="animate-spin" size={18} /> : 'Send Reset Link'}
-                </button>
+              <form onSubmit={resetOtpStep ? handleResetPasswordSubmit : handleForgotPassword}>
+                {resetOtpStep ? (
+                  <>
+                    <div className="form-group" style={{ marginBottom: '16px' }}>
+                      <label><Lock size={14} /> 6-Digit Reset Code</label>
+                      <div className="input-wrapper">
+                        <input 
+                          type="text" 
+                          value={resetOtp} 
+                          onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="Your 6-digit code" 
+                          required 
+                          autoFocus
+                          style={{ textAlign: 'center', letterSpacing: '4px', fontWeight: 'bold' }}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '16px' }}>
+                      <label><Lock size={14} /> New Password</label>
+                      <div className="input-wrapper" style={{ position: 'relative' }}>
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          value={newResetPassword} 
+                          onChange={(e) => setNewResetPassword(e.target.value)}
+                          placeholder="New password" 
+                          required 
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="eye-btn">
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '20px' }}>
+                      <label><Lock size={14} /> Confirm New Password</label>
+                      <div className="input-wrapper">
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          value={confirmResetPassword} 
+                          onChange={(e) => setConfirmResetPassword(e.target.value)}
+                          placeholder="Confirm new password" 
+                          required 
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
+                      {loading ? <Loader className="animate-spin" size={18} /> : 'Reset Password'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="form-group" style={{ marginBottom: '20px' }}>
+                      <label><Mail size={14} /> Registered Email</label>
+                      <div className="input-wrapper">
+                        <input 
+                          type="email" 
+                          value={forgotPasswordEmail} 
+                          onChange={(e) => setForgotPasswordEmail(e.target.value)} 
+                          placeholder="Enter your account email" 
+                          required 
+                          autoFocus
+                        />
+                      </div>
+                      {forgotPasswordMethod === 'sms' && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          We'll send the reset code to the phone number linked to this email.
+                        </p>
+                      )}
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
+                      {loading ? <Loader className="animate-spin" size={18} /> : 'Send Reset Code'}
+                    </button>
+                  </>
+                )}
                 
                 <button 
                   type="button" 
                   className="btn-ghost" 
-                  onClick={() => setIsForgotPassword(false)}
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setResetOtpStep(false);
+                    setForgotPasswordStatus({ type: '', message: '' });
+                  }}
                   style={{ 
                     width: '100%', 
                     marginTop: '16px', 

@@ -12,7 +12,7 @@ try {
     // This will handle token verification and exit if unauthorized
     $userId = authenticate($pdo);
 
-    $stmt = $pdo->prepare("SELECT id, name, email, phone, address, level, level_name, avatar_text, profile_image, status, role, email_notif, push_notif, sms_tracking, two_factor_enabled FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, phone, address, level, level_name, avatar_text, profile_image, status, role, email_notif, push_notif, sms_tracking FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -39,8 +39,7 @@ try {
                 'role' => $user['role'],
                 'email_notif' => (bool)($user['email_notif'] ?? true),
                 'push_notif' => (bool)($user['push_notif'] ?? true),
-                'sms_tracking' => (bool)($user['sms_tracking'] ?? true),
-                'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false)
+                'sms_tracking' => (bool)($user['sms_tracking'] ?? true)
             ]
         ]
     ]);

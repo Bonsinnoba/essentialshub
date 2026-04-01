@@ -6,7 +6,7 @@
     *   Create a MySQL database named `electrocom`.
     *   Import the `schema.sql` file into your database (e.g., using phpMyAdmin or MySQL Workbench).
     *   Import the `schema.sql` file into your database (e.g., using phpMyAdmin or MySQL Workbench).
-*   **Social login (optional)** – set up OAuth credentials for Google, Facebook, GitHub and/or LinkedIn in your provider consoles and add the corresponding keys/redirects to `.env.php` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_CLIENT_ID`, `GITHUB_CLIENT_ID`, etc.).  
+*   **Social login (optional)** – set up OAuth credentials for Google and/or GitHub in your provider consoles and add the corresponding keys/redirects to `.env.php` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, etc.).  
   The application uses the **`league/oauth2-client`** library to handle the OAuth flow.  
 
 2.  **Configuration**:

@@ -6,6 +6,9 @@
 if (!defined('RBAC_ADMIN_GROUP')) {
     define('RBAC_ADMIN_GROUP', ['admin', 'branch_admin', 'store_manager', 'marketing', 'accountant']);
 }
+if (!defined('RBAC_STAFF_GROUP')) {
+    define('RBAC_STAFF_GROUP', ['pos_cashier', 'branch_admin', 'store_manager']);
+}
 if (!defined('RBAC_SUPER_GROUP')) {
     define('RBAC_SUPER_GROUP', ['super']);
 }
@@ -137,17 +140,26 @@ if (!function_exists('getallheaders')) {
 if (!function_exists('authenticate')) {
     function authenticate($pdo = null, $dieOnError = true)
     {
-        $token = $_COOKIE['ehub_session'] ?? null;
+        $token = null;
+        $headers = getallheaders();
 
-        if (!$token) {
-            $headers = getallheaders();
-            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
-            if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                $token = $matches[1];
-            }
+        // 1. Explicit Headers (Highest priority to prevent cross-app local HTTP cookie contamination)
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
         }
 
         if (!$token) {
+            $token = $headers['X-Session-Token'] ?? $headers['x-session-token'] ?? null;
+        }
+
+        // 2. Cookie Fallback
+        if (!$token) {
+            $token = $_COOKIE['ehub_session'] ?? null;
+        }
+
+        if (!$token) {
+            if (function_exists('logApp')) logApp('error', 'AUTH', "AUTH FAIL: No token found. Headers: " . json_encode($headers));
             if ($dieOnError) {
                 header('Content-Type: application/json');
                 http_response_code(401);
@@ -167,8 +179,30 @@ if (!function_exists('authenticate')) {
             }
             return null;
         }
+
+        // SECURITY FIX: Verify Signature
+        $config = require '.env.php';
+        $secret = $config['JWT_SECRET'];
+        $headerAndPayload = $parts[0] . '.' . $parts[1];
+        
+        // Re-calculate signature
+        $expectedSig = hash_hmac('sha256', $headerAndPayload, $secret, true);
+        $encodedSig = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($expectedSig));
+
+        if (!hash_equals($encodedSig, $parts[2])) {
+            if (function_exists('logApp')) logApp('error', 'AUTH', "AUTH FAIL: Invalid token signature. Header+Payload: " . $headerAndPayload);
+            if ($dieOnError) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid token signature.']);
+                exit;
+            }
+            return null;
+        }
+
         $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
         if (isset($payload['exp']) && $payload['exp'] < time()) {
+            if (function_exists('logApp')) logApp('error', 'AUTH', "AUTH FAIL: Token expired.");
             clearSession();
             if ($dieOnError) {
                 header('Content-Type: application/json');
@@ -272,6 +306,10 @@ if (!function_exists('isSuperAdmin')) {
             if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
                 $token = $matches[1];
             }
+            // Also check X-Session-Token (matches cors_middleware.php)
+            if (!$token) {
+                $token = $headers['X-Session-Token'] ?? $headers['x-session-token'] ?? null;
+            }
         }
 
         if (!$token) return false;
@@ -310,7 +348,18 @@ if (!function_exists('logger')) {
     {
         $logDir = __DIR__ . '/logs';
         if (!is_dir($logDir)) mkdir($logDir, 0755, true);
-        $line = date('Y-m-d H:i:s') . " [" . strtoupper($level) . "] [" . strtoupper($source) . "] $message" . PHP_EOL;
+        
+        $userIdCtx = '';
+        if (function_exists('authenticate')) {
+            try {
+                $uid = authenticate(null, false);
+                if ($uid) {
+                    $userIdCtx = " [UID:$uid]";
+                }
+            } catch (Exception $e) {}
+        }
+
+        $line = date('Y-m-d H:i:s') . " [" . strtoupper($level) . "] [" . strtoupper($source) . "]$userIdCtx $message" . PHP_EOL;
         file_put_contents($logDir . '/app.log', $line, FILE_APPEND);
     }
 }

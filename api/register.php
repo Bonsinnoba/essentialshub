@@ -73,7 +73,7 @@ try {
 
     // Hash password and insert user
     $hashedPassword = hashPassword($password);
-    $avatarText = strtoupper(substr($name, 0, 2));
+    $avatarText = generateInitials($name);
     $verificationCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $verificationMethod = sanitizeInput($data['verification_method'] ?? 'email');
 
@@ -95,7 +95,6 @@ try {
     }
 
     $userId = $pdo->lastInsertId();
-    $token = generateToken($userId);
 
     // Create a welcome notification
     $welcomeStmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Welcome to ElectroCom!', 'We are excited to have you here. Start exploring our premium products!', 'info')");
@@ -103,9 +102,9 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => 'Account created successfully!',
+        'needs_verification' => true,
+        'message' => 'Account created successfully! Please verify your account to continue.',
         'data' => [
-            'token' => $token,
             'user' => [
                 'id' => (int)$userId,
                 'name' => $name,
@@ -121,7 +120,7 @@ try {
         ]
     ]);
 } catch (PDOException $e) {
-    error_log("Registration error: " . $e->getMessage());
+    logger('error', 'REGISTER', "Registration failed for $email: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Internal Server Error during registration.']);
 }

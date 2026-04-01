@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { logoutUser } from '../services/api';
+import { logoutUser, checkUserStatus } from '../services/api';
 import { secureStorage } from '../utils/secureStorage';
 
 const UserContext = createContext();
@@ -16,6 +16,17 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     return secureStorage.getItem('user', 'shared'); // Meta info can be shared across sessions
   });
+
+  // Hydrate full user profile (including large base64 profile images) on initial load
+  useEffect(() => {
+      if (user && secureStorage.getItem('token', 'shared')) {
+          checkUserStatus().then(res => {
+              if (res && res.success && res.data && res.data.user) {
+                  setUser(res.data.user);
+              }
+          }).catch(console.error);
+      }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -44,7 +55,7 @@ export const UserProvider = ({ children }) => {
             name: 'Guest User', 
             address: '', 
             profileImage: null,
-            avatar: 'G'
+            avatar: 'GU'
         };
     });
   };

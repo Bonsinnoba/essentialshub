@@ -58,7 +58,7 @@ try {
         'message' => 'Password has been successfully reset. You can now log in.'
     ]);
 } catch (PDOException $e) {
-    error_log("Reset password error: " . $e->getMessage());
+    logger('error', 'PASSWORD_RESET', "Password reset failed for $email: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Internal Server Error during password reset.']);
 }

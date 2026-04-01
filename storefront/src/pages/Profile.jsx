@@ -9,7 +9,7 @@ import AlertModal from '../components/AlertModal';
 
 export default function Profile() {
   const { user, updateUser, resetUser } = useUser();
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -181,7 +181,7 @@ export default function Profile() {
                   const file = e.target.files[0];
                   if (file) {
                     if (file.size > 5242880) { // 5MB limit
-                        addNotification('Image size too large. Please use an image under 5MB.', 'error');
+                        addToast('Image size too large. Please use an image under 5MB.', 'error');
                         return;
                     }
                     const reader = new FileReader();
@@ -193,13 +193,13 @@ export default function Profile() {
                       try {
                           const response = await updateProfile({ profileImage: base64String });
                           if (response.success) {
-                              addNotification('Profile image uploaded successfully', 'success');
+                              addToast('Profile image uploaded successfully', 'success');
                           } else {
-                              addNotification(response.message || 'Failed to save image to server', 'error');
+                              addToast(response.message || 'Failed to save image to server', 'error');
                               // Revert if failed? (Leaving optimistic for now)
                           }
                       } catch (err) {
-                          addNotification('Network error while saving image', 'error');
+                          addToast('Network error while saving image', 'error');
                       }
                     };
                     reader.readAsDataURL(file);

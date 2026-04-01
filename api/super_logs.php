@@ -42,14 +42,16 @@ if ($method === 'GET') {
             // Clean non-UTF8 characters if any
             $line = mb_convert_encoding($line, 'UTF-8', 'UTF-8');
 
-            // Parse: "YYYY-MM-DD HH:MM:SS [level] [SOURCE] message"
-            if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(\w+)\]\s+\[([^\]]+)\]\s+(.+)$/', $line, $m)) {
+            // Parse: "YYYY-MM-DD HH:MM:SS [level] [SOURCE] [UID:X] message"
+            // The UID part is optional.
+            if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(\w+)\]\s+\[([^\]]+)\](?:\s+\[UID:(\d+)\])?\s+(.+)$/', $line, $m)) {
                 $parsed[] = [
                     'id'     => $i + 1,
                     'ts'     => $m[1],
                     'level'  => strtolower($m[2]),
                     'source' => $m[3],
-                    'msg'    => $m[4],
+                    'uid'    => isset($m[4]) && $m[4] !== '' ? $m[4] : null,
+                    'msg'    => $m[5],
                 ];
             } else {
                 // Fallback for lines that don't match the pattern exactly

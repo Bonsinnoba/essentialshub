@@ -49,9 +49,9 @@ try {
     $user = $stmt->fetch();
 
     if ($user) {
-        // Generate a secure token
-        $token = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', time() + 3600); // 1 hour expiry
+        // Generate a 6-digit OTP code
+        $token = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = date('Y-m-d H:i:s', time() + 600); // 10 minutes expiry
 
         // Store token (delete old ones first for this email)
         $stmt = $pdo->prepare("DELETE FROM password_resets WHERE email = ?");
@@ -61,22 +61,19 @@ try {
         $stmt->execute([$email, $token, $expiresAt]);
 
         $notifier = new NotificationService();
-        $config = require '.env.php';
-        $frontendUrl = $config['FRONTEND_URL'] ?? 'http://localhost:5173';
-        $resetLink = "{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($email);
 
         if ($method === 'sms' && !empty($user['phone'])) {
             // Send SMS
-            $msg = "ElectroCom: Use this link to reset your password: {$resetLink}. Expires in 1hr.";
+            $msg = "ElectroCom: Your password reset code is {$token}. It expires in 10 minutes.";
             $notifier->sendSMS($user['phone'], $msg);
-            logger('ok', 'AUTH_FORGOT_SMS', "Password reset link sent via SMS to {$user['phone']}");
+            logger('ok', 'AUTH_FORGOT_SMS', "Password reset code sent via SMS to {$user['phone']}");
             $actualMethod = 'sms';
         } else {
             // Default to Email
-            $subject = "Reset Your ElectroCom Password";
-            $msg = "Hello {$user['name']},\n\nWe received a request to reset your password. Click the link below to set a new password:\n\n{$resetLink}\n\nThis link will expire in 1 hour. If you didn't request this, please ignore this email.";
+            $subject = "Your ElectroCom Password Reset Code";
+            $msg = "Hello {$user['name']},\n\nWe received a request to reset your password. Your 6-digit reset code is:\n\n{$token}\n\nThis code will expire in 10 minutes. If you didn't request this, please safely ignore this email.";
             $notifier->sendEmail($email, $subject, $msg);
-            logger('ok', 'AUTH_FORGOT_EMAIL', "Password reset link sent to {$email}");
+            logger('ok', 'AUTH_FORGOT_EMAIL', "Password reset code sent to {$email}");
             $actualMethod = 'email';
         }
     } else {
@@ -91,8 +88,8 @@ try {
         'success' => true,
         'message' => "If an account exists, a password reset link has been sent to your registered {$targetName}."
     ]);
-} catch (PDOException $e) {
-    error_log("Forgot password error: " . $e->getMessage());
+} catch (Exception $e) {
+    logger('error', 'PASSWORD_FORGOT', "Forgot password failed for $email: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Internal Server Error during forgot password request.']);
+    echo json_encode(['success' => false, 'message' => 'Internal Server Error during password reset request.']);
 }

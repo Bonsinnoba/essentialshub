@@ -33,7 +33,11 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
   ];
 
   return (
-    <aside className={`sidebar ${isOpen ? 'active' : ''}`} id="sidebar">
+    <aside
+      className={`sidebar ${isOpen ? 'active' : ''}`}
+      id="sidebar"
+      onMouseLeave={isOpen ? onClose : undefined}
+    >
       <div className="sidebar-close" onClick={onClose}>
         <X size={24} />
       </div>
@@ -103,36 +107,91 @@ export default function Sidebar({ isOpen, onClose, onOrdersClick, onNotification
         {user ? (
           <>
             <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.55s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
-              <Link to="/profile" className={`sidebar-icon profile-link ${isActive('/profile') ? 'active' : ''}`} data-tooltip="Profile" data-tooltip-pos="right" style={{ padding: '4px' }} onClick={onClose}>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  borderRadius: '50%', 
-                  overflow: 'hidden',
-                  border: '2px solid var(--primary-blue)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'var(--bg-surface)'
-                }}>
-                  {user.profileImage ? (
-                    <img 
-                      src={user.profileImage} 
-                      alt={user.name} 
-                      style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'cover', 
-                        borderRadius: '50%' 
-                      }} 
-                    />
-                  ) : (
-                    <span style={{ color: 'var(--primary-blue)', fontWeight: 700 }}>
-                      {user.avatar || user.name?.charAt(0) || 'U'}
-                    </span>
-                  )}
-                </div>
-              </Link>
+              {isOpen ? (
+                /* Pill style — matches the navbar, shown when sidebar drawer is open */
+                <Link
+                  to="/profile"
+                  className="profile-nav-link btn"
+                  style={{
+                    background: 'var(--primary-blue)',
+                    color: 'white',
+                    borderRadius: '24px',
+                    padding: '4px 16px 4px 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    textDecoration: 'none',
+                    height: '42px',
+                    width: 'calc(100% - 16px)',
+                    flexShrink: 0
+                  }}
+                  onClick={onClose}
+                >
+                  <div style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '50%',
+                    background: user.profileImage ? 'transparent' : 'white',
+                    color: 'var(--primary-blue)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    border: '2px solid white',
+                    flexShrink: 0,
+                    overflow: 'hidden'
+                  }}>
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={user.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      />
+                    ) : (
+                      user.avatar || user.name?.charAt(0) || 'U'
+                    )}
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.name?.split(' ')?.[0] || 'User'}
+                  </span>
+                </Link>
+              ) : (
+                /* Circle only — collapsed sidebar, perfectly centered */
+                <Link
+                  to="/profile"
+                  className={`sidebar-icon profile-link ${isActive('/profile') ? 'active' : ''}`}
+                  data-tooltip="Profile"
+                  data-tooltip-pos="right"
+                  style={{ padding: 0, width: '44px', height: '44px' }}
+                  onClick={onClose}
+                >
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '2px solid rgba(255,255,255,0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.15)',
+                    flexShrink: 0
+                  }}>
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={user.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      />
+                    ) : (
+                      <span style={{ color: 'white', fontWeight: 700, fontSize: '14px' }}>
+                        {user.avatar || user.name?.charAt(0) || 'U'}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              )}
             </div>
             <div className={isOpen ? "animate-slide-in" : ""} style={{ animationDelay: '0.6s', animationFillMode: 'both', width: '100%', display: 'flex', justifyContent: 'center' }}>
               <div className="sidebar-icon" data-tooltip="Logout" data-tooltip-pos="right" onClick={handleLogout}>

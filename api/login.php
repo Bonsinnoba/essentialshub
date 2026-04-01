@@ -23,7 +23,7 @@ if (empty($email) || empty($password)) {
 
 try {
     // Fetch user by email
-    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method, email_notif, push_notif, sms_tracking, two_factor_enabled, theme FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method, email_notif, push_notif, sms_tracking, theme FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
@@ -33,6 +33,7 @@ try {
         if ($lockoutUntil && strtotime($lockoutUntil) > time()) {
             $remaining = ceil((strtotime($lockoutUntil) - time()) / 60);
             http_response_code(403);
+            if (ob_get_length()) ob_clean();
             echo json_encode(['success' => false, 'message' => "Account locked due to multiple failed attempts. Please try again in $remaining minutes."]);
             exit;
         }
@@ -112,21 +113,6 @@ try {
     // Generate token
     $token = generateToken($user['id']);
 
-    // Check for Two-Factor Authentication
-    if ($user['two_factor_enabled']) {
-        logger('info', 'AUTH', "MFA required for user {$user['email']}");
-        echo json_encode([
-            'success' => true,
-            'two_factor_required' => true,
-            'message' => '2-Step Verification required. Please enter your code.',
-            'data' => [
-                'id' => $user['id'],
-                'email' => $user['email']
-            ]
-        ]);
-        exit;
-    }
-
     // Set HttpOnly Cookie for security
     // In production, secure should be true. For local dev (no HTTPS), we keep it false.
     setcookie('ehub_session', $token, [
@@ -140,6 +126,7 @@ try {
 
     logger('ok', 'AUTH', "User {$user['email']} logged in successfully as " . strtoupper($user['role']));
 
+    if (ob_get_length()) ob_clean();
     echo json_encode([
         'success' => true,
         'message' => 'Login successful!',
@@ -154,7 +141,7 @@ try {
                 'level' => $user['level'],
                 'levelName' => $user['level_name'],
                 'avatar' => $user['avatar_text'],
-                'profileImage' => $user['profile_image'],
+                'profileImage' => (strlen($user['profile_image'] ?? '') > 50000) ? null : $user['profile_image'],
                 'role' => $user['role'],
                 'email_notif' => (bool)($user['email_notif'] ?? true),
                 'push_notif' => (bool)($user['push_notif'] ?? true),
@@ -165,7 +152,8 @@ try {
         ]
     ]);
 } catch (PDOException $e) {
-    error_log("Login error: " . $e->getMessage());
+    if (ob_get_length()) ob_clean();
+    logger('error', 'LOGIN', "Fatal login error for $email: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Internal Server Error during login.']);
 }

@@ -484,10 +484,10 @@ label {
 /* Sidebar */
 .sidebar {
     width: var(--sidebar-width);
-    height: calc(100vh - 4px);
+    height: calc(100vh - 24px);
     position: fixed;
     left: 12px;
-    top: 2px;
+    top: 12px;
     margin: 0;
     border-radius: 12px;
     display: flex;
@@ -557,6 +557,11 @@ label {
 
 .sidebar-close {
     display: none;
+}
+
+.sidebar.active {
+    width: 280px;
+    padding: 24px 0 0 20px;
 }
 
 .sidebar-icon {
@@ -5059,20 +5064,37 @@ button.btn-login:hover {
 }
 
 /* Theme Overrides - Defined last to win over dark-mode reset */
-.theme-red {
-    --primary-blue: #ef4444;
-    --primary-blue-rgb: 239, 68, 68;
-    --accent-blue: #dc2626;
-    --light-blue: #fef2f2;
+.theme-yellow {
+    --primary-blue: #fbbf24;
+    --primary-blue-rgb: 251, 191, 36;
+    --accent-blue: #f59e0b;
+    --accent-blue-rgb: 245, 158, 11;
 }
 
-/* Ensure logout button is visible on red sidebar */
-.theme-red .sidebar-icon[data-tooltip="Logout"] svg {
-    color: #ffffff !important;
+/* Contrast Overrides for Yellow Theme */
+.theme-yellow .sidebar {
+    color: #0f172a !important;
 }
-.theme-red .sidebar-icon[data-tooltip="Logout"] .sidebar-label {
-    color: #ffffff !important;
+
+.theme-yellow .sidebar .nav-link:not(.active) {
+    color: rgba(15, 23, 42, 0.7) !important;
 }
+
+.theme-yellow .sidebar .nav-link.active {
+    background: #0f172a !important;
+    color: #fbbf24 !important;
+}
+
+.theme-yellow .btn-primary,
+.theme-yellow .back-to-top {
+    color: #0f172a !important;
+}
+
+.theme-yellow .sidebar-icon[data-tooltip="Logout"] svg,
+.theme-yellow .sidebar-icon[data-tooltip="Logout"] .sidebar-label {
+    color: #0f172a !important;
+}
+
 
 .theme-green {
     --primary-blue: #22c55e;

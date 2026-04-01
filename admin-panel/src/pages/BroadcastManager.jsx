@@ -4,7 +4,7 @@ import { sendBroadcast } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
 
 export default function BroadcastManager() {
-    const { addNotification } = useNotifications();
+    const { addToast } = useNotifications();
     const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState(null);
     const [formData, setFormData] = useState({
@@ -25,14 +25,14 @@ export default function BroadcastManager() {
         try {
             const res = await sendBroadcast(formData);
             if (res.success) {
-                addNotification('Broadcast sent successfully!', 'success');
+                addToast('Broadcast sent successfully!', 'success');
                 setStats(res.stats);
                 setFormData({ ...formData, title: '', message: '' });
             } else {
-                addNotification(res.error || 'Failed to send broadcast', 'error');
+                addToast(res.error || 'Failed to send broadcast', 'error');
             }
         } catch (err) {
-            addNotification('Network error occurred', 'error');
+            addToast('Network error occurred', 'error');
         } finally {
             setLoading(false);
         }

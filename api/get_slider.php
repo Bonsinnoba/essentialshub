@@ -1,7 +1,7 @@
 <?php
 // backend/get_slider.php
-require 'cors_middleware.php';
-require 'db.php';
+require_once 'cors_middleware.php';
+require_once 'db.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate'); // HTTP 1.1.

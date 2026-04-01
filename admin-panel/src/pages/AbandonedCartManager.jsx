@@ -7,7 +7,7 @@ export default function AbandonedCartManager() {
   const [carts, setCarts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCart, setExpandedCart] = useState(null);
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
 
   useEffect(() => {
     loadCarts();
@@ -21,7 +21,7 @@ export default function AbandonedCartManager() {
         setCarts(result.data);
       }
     } catch (error) {
-      addNotification("Failed to load abandoned carts", "error");
+      addToast("Failed to load abandoned carts", "error");
     } finally {
       setLoading(false);
     }

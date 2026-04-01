@@ -9,7 +9,7 @@ export default function CouponManager() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   
   const [formData, setFormData] = useState({
     id: null,
@@ -31,11 +31,11 @@ export default function CouponManager() {
       if (data.success) {
         setCoupons(data.data);
       } else {
-         addNotification(data.error || 'Failed to fetch coupons', 'error');
+         addToast(data.error || 'Failed to fetch coupons', 'error');
       }
     } catch (error) {
       console.error(error);
-      addNotification('Error fetching coupons', 'error');
+      addToast('Error fetching coupons', 'error');
     } finally {
       setLoading(false);
     }
@@ -82,14 +82,14 @@ export default function CouponManager() {
       
       const data = await response.json();
       if (data.success) {
-        addNotification(`Coupon ${formData.id ? 'updated' : 'created'} successfully`, 'success');
+        addToast(`Coupon ${formData.id ? 'updated' : 'created'} successfully`, 'success');
         setIsModalOpen(false);
         fetchCoupons();
       } else {
-        addNotification(data.error || 'Failed to save coupon', 'error');
+        addToast(data.error || 'Failed to save coupon', 'error');
       }
     } catch (error) {
-       addNotification('Error connecting to server', 'error');
+       addToast('Error connecting to server', 'error');
     }
   };
 
@@ -106,13 +106,13 @@ export default function CouponManager() {
       });
       const data = await response.json();
       if (data.success) {
-        addNotification('Coupon deleted', 'success');
+        addToast('Coupon deleted', 'success');
         fetchCoupons();
       } else {
-        addNotification(data.error || 'Failed to delete coupon', 'error');
+        addToast(data.error || 'Failed to delete coupon', 'error');
       }
     } catch (error) {
-      addNotification('Error deleting coupon', 'error');
+      addToast('Error deleting coupon', 'error');
     }
   };
 
@@ -168,7 +168,7 @@ export default function CouponManager() {
                                  {coupon.code}
                                  <Copy size={12} style={{ cursor: 'pointer', opacity: 0.7 }} onClick={() => {
                                      navigator.clipboard.writeText(coupon.code);
-                                     addNotification('Copied to clipboard', 'info');
+                                     addToast('Copied to clipboard', 'info');
                                  }} />
                              </div>
                          </td>

@@ -14,7 +14,7 @@ import { deleteMyAccount, changePassword, updateProfile } from '../services/api'
 import { useNavigate, Link } from 'react-router-dom'; // Added Link
 
 export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, theme, setTheme }) {
-  const { addNotification, addToast } = useNotifications();
+  const { addToast } = useNotifications();
   const { settings, updateSetting, updateCurrency } = useSettings();
   const { user, updateUser, logout } = useUser(); // Added updateUser
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
     try {
       const result = await changePassword(pwForm.current, pwForm.next);
       if (result.success) {
-        addNotification('Password changed successfully!', 'success');
+        addToast('Password changed successfully!', 'success');
         setShowPasswordModal(false);
       } else {
         setPwError(result.message || 'Failed to change password.');
@@ -138,14 +138,14 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
     try {
       const result = await deleteMyAccount();
       if (result.success) {
-        addNotification('Your account has been permanently deleted.', 'success');
+        addToast('Your account has been permanently deleted.', 'success');
         logout();
         navigate('/');
       } else {
-        addNotification(result.message || 'Failed to delete account', 'error');
+        addToast(result.message || 'Failed to delete account', 'error');
       }
     } catch {
-      addNotification('An error occurred during account deletion', 'error');
+      addToast('An error occurred during account deletion', 'error');
     } finally {
       setShowDeleteConfirm(false);
     }
@@ -154,11 +154,11 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
   const handleToggle = (key) => {
     const newValue = !settings[key];
     updateSetting(key, newValue);
-    addNotification(`${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ${newValue ? 'Enabled' : 'Disabled'}`, 'info');
+    addToast(`${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ${newValue ? 'Enabled' : 'Disabled'}`, 'info');
   };
 
   const handleAction = (title, message) => {
-    addNotification(`${title}: ${message}`, 'info');
+    addToast(`${title}: ${message}`, 'info');
   };
 
   const shouldShow = (title) => {
@@ -376,7 +376,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
                 value={settings.currency}
                 onChange={(e) => {
                   updateCurrency(e.target.value);
-                  addNotification(`Currency switched to ${e.target.value}`, 'info');
+                  addToast(`Currency switched to ${e.target.value}`, 'info');
                 }}
                 style={{
                   padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',
@@ -412,10 +412,6 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
       {shouldShow('Security & Privacy') && (
         <SettingCard title="Security & Privacy" icon={Shield}>
 
-          <SettingRow 
-            icon={Lock} title="2-Step Verification" description="Enhanced account protection"
-            action={<Toggle checked={settings.two_factor_enabled} onChange={() => handleToggle('two_factor_enabled')} />} 
-          />
           <SettingRow 
             icon={KeyRound} title="Change Password" description="Update your account password"
             action={<ActionButton label="Change" onClick={openPasswordModal} />} 
@@ -462,7 +458,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
             <div style={{ display: 'flex', gap: '12px' }}>
               {[
                 { id: 'blue', color: '#3b82f6', label: 'Classic Blue' },
-                { id: 'red', color: '#ef4444', label: 'Vibrant Red' },
+                { id: 'yellow', color: '#fbbf24', label: 'Golden Yellow' },
                 { id: 'green', color: '#22c55e', label: 'Nature Green' },
                 { id: 'purple', color: '#8b5cf6', label: 'Royal Purple' }
               ].map((t) => (
@@ -510,7 +506,7 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
                 value={settings.language}
                 onChange={(e) => {
                   updateSetting('language', e.target.value);
-                  addNotification(`Language set to ${e.target.value}`, 'info');
+                  addToast(`Language set to ${e.target.value}`, 'info');
                 }}
                 style={{
                   padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',

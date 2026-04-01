@@ -15,10 +15,13 @@ import ReviewManager from './pages/ReviewManager';
 import AbandonedCartManager from './pages/AbandonedCartManager';
 import BroadcastManager from './pages/BroadcastManager';
 import ReturnManager from './pages/ReturnManager';
+import POSInterface from './pages/POSInterface';
 import SuperDashboard from './pages/super-user/SuperDashboard';
 import BranchManagement from './pages/super-user/BranchManagement';
 import AdminControl from './pages/super-user/AdminControl';
 import SystemLogs from './pages/super-user/SystemLogs';
+import StockManagement from './pages/StockManagement';
+import StaffChat from './pages/StaffChat';
 
 import GlobalSettings from './pages/super-user/GlobalSettings';
 import TrafficControl from './pages/super-user/TrafficControl';
@@ -215,7 +218,7 @@ function AppContent() {
 
   useEffect(() => {
     // Remove existing theme classes
-    document.body.classList.remove('theme-red', 'theme-green', 'theme-purple');
+    document.body.classList.remove('theme-yellow', 'theme-green', 'theme-purple');
     // Add new one if not blue
     if (theme !== 'blue') {
       document.body.classList.add(`theme-${theme}`);
@@ -246,6 +249,19 @@ function AppContent() {
     };
   }, []);
 
+  const { logout } = useAuth();
+  const { addToast } = useNotifications();
+
+  // passive session expiry listener
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      addToast('Session expired. Please log in again.', 'warning');
+    };
+    window.addEventListener('auth_unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth_unauthorized', handleUnauthorized);
+  }, [logout, addToast]);
+
   return (
     <Router>
       <div className="mobile-restriction">
@@ -256,13 +272,15 @@ function AppContent() {
           Please access this URL from a tablet (landscape), laptop, or desktop computer (min-width: 1024px).
         </p>
       </div>
-      
+
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
         <Route path="/products" element={<ProtectedLayout><ProductManager /></ProtectedLayout>} />
         <Route path="/orders" element={<ProtectedLayout><OrderManager /></ProtectedLayout>} />
+        <Route path="/staff-chat" element={<ProtectedLayout><StaffChat /></ProtectedLayout>} /> {/* Added StaffChat Route */}
+        <Route path="/pos" element={<ProtectedLayout><POSInterface /></ProtectedLayout>} />
         <Route path="/customers" element={<ProtectedLayout><CustomerManager /></ProtectedLayout>} />
         <Route path="/slider" element={<ProtectedLayout><SliderManager /></ProtectedLayout>} />
         <Route path="/coupons" element={<ProtectedLayout><CouponManager /></ProtectedLayout>} />
@@ -272,6 +290,7 @@ function AppContent() {
         <Route path="/abandoned-carts" element={<ProtectedLayout><AbandonedCartManager /></ProtectedLayout>} />
         <Route path="/broadcast" element={<ProtectedLayout><BroadcastManager /></ProtectedLayout>} />
         <Route path="/returns" element={<ProtectedLayout><ReturnManager /></ProtectedLayout>} />
+        <Route path="/stock-requests" element={<ProtectedLayout><StockManagement /></ProtectedLayout>} />
         <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
 
         {/* Super Admin Routes */}

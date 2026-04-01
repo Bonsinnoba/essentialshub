@@ -5,7 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Upload } from 'lucide-react';
 
 export default function SliderManager() {
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   const [slides, setSlides] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -145,11 +145,11 @@ export default function SliderManager() {
       } else {
         await createSlide(formData);
       }
-      addNotification(editingSlide ? 'Slide updated successfully' : 'Slide created successfully', 'success');
+      addToast(editingSlide ? 'Slide updated successfully' : 'Slide created successfully', 'success');
       closeModal();
       loadSlides();
     } catch (err) {
-      addNotification(err.message || 'Error saving slide', 'error');
+      addToast(err.message || 'Error saving slide', 'error');
     }
   };
 

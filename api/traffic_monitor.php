@@ -67,6 +67,7 @@ function monitorTraffic()
     if ($restriction) {
         http_response_code(403);
         header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode([
             'success' => false,
             'restricted' => true,
@@ -93,6 +94,7 @@ function monitorTraffic()
 
         http_response_code(429); // Too Many Requests
         header('Content-Type: application/json');
+        if (ob_get_length()) ob_clean();
         echo json_encode(['success' => false, 'message' => 'Too many requests. Your IP has been restricted.']);
         exit;
     }

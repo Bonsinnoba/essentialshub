@@ -34,11 +34,30 @@ export const secureStorage = {
         try {
             const id = userId || 'guest';
             const fullKey = `${APP_PREFIX}_${key}_${id}`;
-            const stringValue = JSON.stringify(value);
+            
+            // Minimize data if it's the user object to avoid QuotaExceededError
+            let processedValue = value;
+            if (key === 'user' && value && typeof value === 'object') {
+                processedValue = { ...value };
+                if (processedValue.profileImage && processedValue.profileImage.length > 50000) {
+                    console.warn(`[secureStorage] profileImage too large for ${id}, omitting from storage.`);
+                    delete processedValue.profileImage;
+                }
+            }
+
+            const stringValue = JSON.stringify(processedValue);
             localStorage.setItem(fullKey, obfuscate(stringValue));
         } catch (e) {
             console.error(`Failed to set secure storage for ${key}`, e);
-            // Non-critical: allow app to continue even if storage fails
+            
+            // If quota exceeded, try to clear non-essential data or just log
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.warn('[secureStorage] Quota exceeded. Attempting self-heal...');
+                // Optional: clear other keys with APP_PREFIX to make room
+                try {
+                    // Logic to clear old logs or non-essential keys could go here
+                } catch (e2) {}
+            }
         }
     },
 

@@ -13,7 +13,7 @@ const decodeHtml = (html) => {
 /**
  * Helper to ensure image URLs are absolute
  */
-const formatImageUrl = (url) => {
+export const formatImageUrl = (url) => {
     if (!url) return url;
     // Fix hardcoded dev URLs from DB
     url = url.replace('http://electrocom.local/api/', '');
@@ -33,7 +33,7 @@ const getAuthHeaders = () => {
 };
 
 /**
- * Helper to fetch with auth headers
+ * Helper to fetch with auth headers and global interceptor
  */
 const authFetch = async (url, options = {}) => {
     try {
@@ -44,6 +44,11 @@ const authFetch = async (url, options = {}) => {
                 ...options.headers
             }
         });
+
+        // Passive interceptor for 401/403
+        if (response.status === 401 || response.status === 403) {
+            window.dispatchEvent(new Event('auth_unauthorized'));
+        }
 
         const text = await response.text();
         try {
@@ -59,20 +64,31 @@ const authFetch = async (url, options = {}) => {
 };
 
 export const loginUser = async (credentials) => {
-    const response = await fetch(`${API_BASE_URL}/login.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-    });
-    const result = await response.json();
-    return result;
+    try {
+        const response = await fetch(`${API_BASE_URL}/login.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+            credentials: 'include' // Ensure cookies are sent and handled correctly for CORS
+        });
+        
+        const rawText = await response.text();
+        try {
+            return JSON.parse(rawText);
+        } catch (e) {
+            console.error('Invalid JSON from server:', rawText);
+            return { success: false, message: 'Server returned an invalid format.' };
+        }
+    } catch (error) {
+        console.error('Login fetch error:', error);
+        throw error; // Rethrow so Login.jsx catch block can show "Connection error"
+    }
 };
 
 
 export const fetchProducts = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/get_products.php?_t=${Date.now()}`);
-        const result = await response.json();
+        const result = await authFetch(`/get_products.php?_t=${Date.now()}`);
         const data = result.success ? result.data : [];
         return data.map(product => ({
             ...product,
@@ -80,7 +96,7 @@ export const fetchProducts = async () => {
             description: decodeHtml(product.description),
             category: decodeHtml(product.category),
             image_url: formatImageUrl(product.image_url),
-            directions: formatImageUrl(product.directions), // Handles PDF uploads
+            directions: formatImageUrl(product.directions),
             gallery: Array.isArray(product.gallery)
                 ? product.gallery.map(formatImageUrl)
                 : []
@@ -91,73 +107,24 @@ export const fetchProducts = async () => {
     }
 };
 
-export const createProduct = async (productData) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin_products.php`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ action: 'create', ...productData }),
-        });
+export const createProduct = async (productData) => authFetch('/admin_products.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'create', ...productData }),
+});
 
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || result.error || 'Failed to create product');
-        }
-        return result;
-    } catch (error) {
-        console.error('Error creating product:', error);
-        throw error;
-    }
+export const updateProduct = async (id, productData) => authFetch('/admin_products.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'update', id, ...productData }),
+});
 
-};
-
-export const updateProduct = async (id, productData) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin_products.php`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ action: 'update', id, ...productData }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || result.error || 'Failed to update product');
-        }
-        return result;
-    } catch (error) {
-        console.error('Error updating product:', error);
-        throw error;
-    }
-
-};
-
-export const deleteProduct = async (id) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin_products.php`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ action: 'delete', id }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || result.error || 'Failed to delete product');
-        }
-        return result;
-    } catch (error) {
-        console.error('Error deleting product:', error);
-        throw error;
-    }
-
-};
+export const deleteProduct = async (id) => authFetch('/admin_products.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete', id }),
+});
 
 export const fetchCustomers = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin_customers.php?_t=${Date.now()}`, {
-            headers: getAuthHeaders()
-        });
-
-        const result = await response.json();
+        const result = await authFetch(`/admin_customers.php?_t=${Date.now()}`);
         const data = result.success ? result.data : [];
 
         return data.map(customer => ({
@@ -577,6 +544,20 @@ export const removeRestriction = async (id) => {
     }
 };
 
+export const clearTrafficHour = async (hour) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin_traffic.php`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ action: 'clear_hour', hour }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error clearing traffic hour:', error);
+        throw error;
+    }
+};
+
 export const wipeDemoData = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/cleanup_demo.php`, {
@@ -769,6 +750,17 @@ export const fetchAbandonedCarts = async () => {
 // --- Notifications ---
 
 
+// --- Stock Requests ---
+export const fetchStockRequests = async () => authFetch('/stock_requests.php?_t=' + Date.now());
+export const createStockRequest = async (data) => authFetch('/stock_requests.php', {
+    method: 'POST',
+    body: JSON.stringify(data)
+});
+export const updateStockRequestStatus = async (id, status) => authFetch('/stock_requests.php', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, status })
+});
+
 export const fetchAdminNotifications = async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/get_notifications.php?admin=true&_t=${Date.now()}`, {
@@ -798,4 +790,5 @@ export const markNotificationRead = async (id) => {
 // Keep backward-compat exports pointing to correct functions
 export const getBranches = fetchWarehouses;
 export const addBranch = createWarehouse;
+export const fetchBackend = authFetch;
 

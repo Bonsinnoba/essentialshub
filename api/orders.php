@@ -18,10 +18,15 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
             shipping_address TEXT,
             payment_method VARCHAR(50),
             payment_reference VARCHAR(100),
+            order_type ENUM('online', 'pos') DEFAULT 'online',
+            source_branch_id INT DEFAULT NULL,
+            cashier_id INT DEFAULT NULL,
             review_requested_at DATETIME DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+            FOREIGN KEY (source_branch_id) REFERENCES store_branches(id) ON DELETE SET NULL,
+            FOREIGN KEY (cashier_id) REFERENCES users(id) ON DELETE SET NULL
         )");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS order_items (
@@ -50,6 +55,15 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         }
         if (!in_array('delivery_otp', $cols)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN delivery_otp VARCHAR(10) DEFAULT NULL AFTER status");
+        }
+        if (!in_array('order_type', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN order_type ENUM('online', 'pos') DEFAULT 'online' AFTER user_id");
+        }
+        if (!in_array('source_branch_id', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN source_branch_id INT DEFAULT NULL AFTER order_type");
+        }
+        if (!in_array('cashier_id', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN cashier_id INT DEFAULT NULL AFTER source_branch_id");
         }
     } catch (Exception $e) {
         error_log("Orders schema self-healing failed: " . $e->getMessage());

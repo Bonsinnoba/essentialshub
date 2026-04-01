@@ -113,3 +113,22 @@ if (!function_exists('logApp')) {
     }
 }
 
+/**
+ * Helper function to generate avatar initials (first letter of first and last name)
+ */
+if (!function_exists('generateInitials')) {
+    function generateInitials($name) {
+        $name = trim($name ?? '');
+        if (empty($name)) return 'U';
+        
+        $parts = preg_split('/\s+/', $name);
+        if (count($parts) >= 2) {
+            $first = mb_substr($parts[0], 0, 1);
+            $last = mb_substr(end($parts), 0, 1);
+            return strtoupper($first . $last);
+        }
+        
+        return strtoupper(mb_substr($name, 0, 2));
+    }
+}
+

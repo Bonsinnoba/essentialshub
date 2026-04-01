@@ -15,7 +15,7 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { user, openAuthModal } = useUser();
   const { addToCart } = useCart();
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   const inWishlist = isInWishlist(id); 
 
   const handleWishlistClick = (e) => {
@@ -34,7 +34,7 @@ export default function ProductCard({ id, name, price, image, rating, onClick, o
       return;
     }
     addToCart({ id, name, price, image, rating });
-    addNotification(`${name} added to cart`, 'success');
+    addToast(`${name} added to cart`, 'success');
   };
 
   return (

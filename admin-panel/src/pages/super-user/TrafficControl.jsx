@@ -14,7 +14,7 @@ import {
   ExternalLink,
   ChevronRight
 } from 'lucide-react';
-import { fetchTrafficStats, addRestriction, removeRestriction } from '../../services/api';
+import { fetchTrafficStats, addRestriction, removeRestriction, clearTrafficHour } from '../../services/api';
 
 const StatCard = ({ icon, label, value, color }) => (
   <div className="card glass" style={{ flex: 1, borderLeft: `4px solid ${color}` }}>
@@ -82,6 +82,20 @@ export default function TrafficControl() {
     }
   };
 
+  const handleClearHour = async (hour) => {
+    if (!confirm(`Are you sure you want to clear all traffic logs for ${hour}?`)) return;
+    try {
+      const result = await clearTrafficHour(hour);
+      if (result.success) {
+        loadStats();
+      } else {
+        alert(result.message || "Failed to clear hour.");
+      }
+    } catch (err) {
+      alert("Error clearing hour.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-state">
@@ -142,6 +156,48 @@ export default function TrafficControl() {
         />
       </div>
 
+      {/* Hourly Traffic Breakdown */}
+      <div className="card glass" style={{ padding: '0', overflow: 'hidden' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={18} color="var(--primary-blue)" /> Hourly Traffic Breakdown
+          </h3>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Last 48 Hours</div>
+        </div>
+        <div style={{ padding: '12px 24px', maxHeight: '300px', overflowY: 'auto' }}>
+          {stats?.hourlyStats?.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px', padding: '12px 0' }}>
+              {stats.hourlyStats.map((item) => (
+                <div key={item.hour} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '12px 16px', 
+                  background: 'var(--bg-surface-secondary)', 
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-light)'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{new Date(item.hour).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.count} hits recorded</div>
+                  </div>
+                  <button 
+                    onClick={() => handleClearHour(item.hour)}
+                    className="btn-danger"
+                    style={{ padding: '8px', fontSize: '11px', gap: '4px' }}
+                    title="Clear this hour"
+                  >
+                    <Trash2 size={14} /> Clear
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No hourly data available.</div>
+          )}
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         {/* Recent Traffic Table */}
         <div className="card glass" style={{ padding: '0', overflow: 'hidden' }}>
@@ -161,7 +217,7 @@ export default function TrafficControl() {
               />
             </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-surface-secondary)', textAlign: 'left' }}>

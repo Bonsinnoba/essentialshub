@@ -37,7 +37,7 @@ import CookiePolicy from './pages/CookiePolicy';
 import ShippingInfo from './pages/ShippingInfo';
 import Returns from './pages/Returns';
 import FAQ from './pages/FAQ';
-import { fetchOrders, fetchProducts, checkUserStatus } from './services/api';
+import { fetchOrders, fetchProducts } from './services/api';
 import { useUser } from './context/UserContext';
 import { formatRelativeTime, formatDate } from './utils/dateFormatter';
 import MaintenancePage from './pages/MaintenancePage';
@@ -56,7 +56,7 @@ const ScrollToTop = () => {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, authModal, openAuthModal, closeAuthModal } = useUser();
+  const { user, updateUser, logout, authModal, openAuthModal, closeAuthModal } = useUser();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const lastFetchRef = React.useRef(0); 
 
@@ -65,9 +65,8 @@ function AppContent() {
     const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
     const checkMaintenance = async () => {
       try {
-        const token = localStorage.getItem('ehub_token');
         const res = await fetch(`${API_BASE}/get_products.php?limit=1`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          // Note: credentials 'include' ensures cookies are sent automatically
         });
         if (res.status === 503) {
           const data = await res.json();
@@ -90,14 +89,6 @@ function AppContent() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Must be before any conditional returns to satisfy Rules of Hooks
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('social_error') || params.get('social_token')) {
-       openAuthModal('signin');
-    }
-  }, []);
-
   const [redirectPath, setRedirectPath] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -116,8 +107,49 @@ function AppContent() {
 
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { addNotification, notifications, deleteNotification } = useNotifications();
+  const { addToast, addNotification, notifications, deleteNotification } = useNotifications();
   const maintenanceRef = useRef(isMaintenanceMode);
+
+  // Handle social login redirects
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('social_token');
+    const encodedUser = params.get('social_user');
+    const error = params.get('social_error');
+
+    if (token && encodedUser) {
+      try {
+        const rawUser = JSON.parse(atob(decodeURIComponent(encodedUser)));
+        const userObj = {
+          id: rawUser.id,
+          name: rawUser.name,
+          email: rawUser.email,
+          phone: rawUser.phone || '',
+          address: rawUser.address || '',
+          level: rawUser.level || 1,
+          levelName: rawUser.level_name || 'Starter',
+          avatar: rawUser.avatar_text || (rawUser.name ? rawUser.name.slice(0, 2).toUpperCase() : '??'),
+          profileImage: rawUser.profile_image || null,
+          role: rawUser.role || 'customer',
+          email_notif: rawUser.email_notif !== undefined ? Boolean(rawUser.email_notif) : true,
+          push_notif: rawUser.push_notif !== undefined ? Boolean(rawUser.push_notif) : true,
+          sms_tracking: rawUser.sms_tracking !== undefined ? Boolean(rawUser.sms_tracking) : true,
+          theme: rawUser.theme || 'blue',
+        };
+        // Persist token so `checkUserStatus` and protected routes remain authenticated
+        secureStorage.setItem('token', token, 'shared');
+        updateUser(userObj);
+        addToast("Login successful!", "success");
+        // Clear the URL immediately to prevent re-processing and clean history
+        navigate('/', { replace: true });
+      } catch (e) {
+        console.error('Failed to parse social user:', e);
+      }
+    } else if (error) {
+      addToast(decodeURIComponent(error), "error");
+      navigate('/', { replace: true });
+    }
+  }, [navigate, updateUser, addToast, addNotification]);
 
   useEffect(() => {
     maintenanceRef.current = isMaintenanceMode;
@@ -131,8 +163,8 @@ function AppContent() {
 
   useEffect(() => {
     // Remove existing theme classes
-    document.documentElement.classList.remove('theme-red', 'theme-green', 'theme-purple');
-    document.body.classList.remove('theme-red', 'theme-green', 'theme-purple');
+    document.documentElement.classList.remove('theme-yellow', 'theme-green', 'theme-purple');
+    document.body.classList.remove('theme-yellow', 'theme-green', 'theme-purple');
     
     // Add new one if not blue
     if (theme !== 'blue') {
@@ -186,7 +218,7 @@ function AppContent() {
           lastFetchRef.current = Date.now();
 
           if (data.length === 0 && productsRef.current.length === 0) {
-             addNotification("Product catalog is currently empty", "info");
+             addToast("Product catalog is currently empty", "info");
           }
       } else {
           throw new Error("Invalid data format from server");
@@ -228,32 +260,22 @@ function AppContent() {
     }
   }, [products, selectedProduct]);
 
+  // Listen for global 401 Unauthorized events from apiFetch
   useEffect(() => {
-    let interval;
-    if (user) {
-        interval = setInterval(async () => {
-            const result = await checkUserStatus();
-            if (result.maintenance) {
-                const currentUser = JSON.parse(localStorage.getItem('ehub_user') || '{}');
-                if (currentUser.role !== 'super') {
-                    setIsMaintenanceMode(true);
-                    return;
-                }
-            }
-            if (result.unauthorized) {
-                logout();
-                addNotification("Session expired. Please login again.", "info");
-                return;
-            }
-            if (result.success && result.status === 'Suspended') {
-                logout();
-                alert("Your account has been suspended by an administrator. You will be logged out now.");
-                addNotification("Account Suspended", "error");
-            }
-        }, 10000); 
-    }
-    return () => clearInterval(interval);
-  }, [user, logout]);
+    const handleUnauthorized = () => {
+        if (user) {
+            logout();
+            addToast("Session expired. Please login again.", "info");
+        }
+    };
+    
+    // Custom event dispatched from api.js when a 401 response is received
+    window.addEventListener('auth_unauthorized', handleUnauthorized);
+    
+    return () => {
+        window.removeEventListener('auth_unauthorized', handleUnauthorized);
+    };
+  }, [user, logout, addToast]);
 
   useEffect(() => {
     if (user && activeDrawer === 'orders') {
@@ -302,13 +324,13 @@ function AppContent() {
 
   const handleAddToCart = (product, qty, color) => {
     addToCart(product, qty, color);
-    addNotification(`Added ${product.name} to cart`, 'info');
+    addToast(`Added ${product.name} to cart`, 'info');
   };
 
   const handleAddToWishlist = (product) => {
     toggleWishlist(product);
     const isNowIn = !isInWishlist(product.id);
-    addNotification(
+    addToast(
       isNowIn ? `Added ${product.name} to wishlist` : `Removed ${product.name} from wishlist`, 
       'info'
     );

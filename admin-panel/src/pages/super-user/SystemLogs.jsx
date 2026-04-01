@@ -116,6 +116,13 @@ export default function SystemLogs() {
       (l.msg?.toLowerCase().includes(q) || l.source?.toLowerCase().includes(q));
   });
 
+  const groupedLogs = filtered.reduce((acc, log) => {
+    const dateStr = new Date(log.ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(log);
+    return acc;
+  }, {});
+
   const counts = { 
     total: logs.length, 
     error: logs.filter(l => l.level === 'error').length, 
@@ -223,34 +230,74 @@ export default function SystemLogs() {
               <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>No matching log entries.</div>
             ) : (
               <div style={{ maxHeight: '560px', overflowY: 'auto', padding: '8px 0' }}>
-                {filtered.map((log, i) => {
-                  const s = LEVEL_STYLE[log.level] || LEVEL_STYLE.info;
-                  return (
-                    <div key={log.id ?? i} style={{
-                      display: 'flex', gap: '14px', alignItems: 'flex-start',
-                      padding: '10px 20px',
+                {Object.entries(groupedLogs).map(([date, dateLogs], groupIndex) => (
+                  <div key={date}>
+                    <div style={{
+                      padding: '8px 20px',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
                       borderBottom: '1px solid rgba(255,255,255,0.02)',
-                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
-                      transition: 'background 0.15s'
+                      borderTop: groupIndex > 0 ? '1px solid rgba(255,255,255,0.02)' : 'none',
+                      position: 'sticky',
+                      top: '-8px',
+                      zIndex: 10
                     }}>
-                      {/* Level badge */}
-                      <div style={{ padding: '3px 8px', borderRadius: '6px', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: '10px', fontWeight: 900, letterSpacing: '0.5px', flexShrink: 0, width: '58px', textAlign: 'center', marginTop: '1px' }}>
-                        {s.label}
-                      </div>
-                      {/* Source */}
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--primary-gold)', minWidth: '120px', flexShrink: 0, paddingTop: '2px' }}>
-                        [{log.source}]
-                      </div>
-                      {/* Message */}
-                      <div style={{ flex: 1, fontSize: '13px', color: '#e2e8f0', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', paddingRight: '10px' }}>{log.msg}</div>
-                      {/* Timestamp */}
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0, paddingTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={10} />
-                        {fmtTs(log.ts)}
-                      </div>
+                      {date}
                     </div>
-                  );
-                })}
+                    {dateLogs.map((log, i) => {
+                      const s = LEVEL_STYLE[log.level] || LEVEL_STYLE.info;
+                      return (
+                        <div key={log.id ?? i} style={{
+                          display: 'flex', gap: '14px', alignItems: 'flex-start',
+                          padding: '10px 20px',
+                          borderBottom: '1px solid rgba(255,255,255,0.02)',
+                          background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
+                          transition: 'background 0.15s'
+                        }}>
+                          {/* Level badge */}
+                          <div style={{ padding: '3px 8px', borderRadius: '6px', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: '10px', fontWeight: 900, letterSpacing: '0.5px', flexShrink: 0, width: '58px', textAlign: 'center', marginTop: '1px' }}>
+                            {s.label}
+                          </div>
+                          {/* Source */}
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--primary-gold)', minWidth: '100px', flexShrink: 0, paddingTop: '2px' }}>
+                            [{log.source}]
+                          </div>
+                          {/* User ID Badge */}
+                          {log.uid && (
+                            <div style={{ 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              background: 'rgba(139,92,246,0.1)', 
+                              border: '1px solid rgba(139,92,246,0.2)', 
+                              color: '#a78bfa', 
+                              fontSize: '10px', 
+                              fontWeight: 700, 
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: '1px'
+                            }}>
+                              <User size={10} />
+                              ID:{log.uid}
+                            </div>
+                          )}
+                          {/* Message */}
+                          <div style={{ flex: 1, fontSize: '13px', color: '#e2e8f0', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', paddingRight: '10px' }}>{log.msg}</div>
+                          {/* Timestamp */}
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0, paddingTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={10} />
+                            {new Date(log.ts).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>

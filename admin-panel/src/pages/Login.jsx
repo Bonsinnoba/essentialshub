@@ -40,7 +40,8 @@ export default function Login() {
             setError(result.message || 'Invalid email or password');
         }
     } catch (err) {
-        setError('Connection error. Please ensure the backend is running.');
+        console.error('Detailed login error:', err);
+        setError(`Connection error: ${err.message || 'Unknown network error'}. URL: ${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`);
     } finally {
         setLoading(false);
     }

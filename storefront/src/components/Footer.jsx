@@ -1,5 +1,5 @@
 import React from 'react';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 
@@ -19,9 +19,6 @@ export default function Footer() {
             </div>
             <p className="footer-description">Your trusted destination for premium electronics and cutting-edge technology.</p>
             <div className="footer-social">
-              <a href="#" className="social-link" data-tooltip="Facebook" data-tooltip-pos="top">
-                <Facebook size={20} />
-              </a>
               <a href="#" className="social-link" data-tooltip="Twitter" data-tooltip-pos="top">
                 <Twitter size={20} />
               </a>

@@ -28,7 +28,6 @@ export const SettingsProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : {
       email_notif: true,
       push_notif: true,
-      two_factor_enabled: false,
       sms_tracking: true,
       currency: 'GHS',
       language: 'English (UK)',
@@ -58,8 +57,7 @@ export const SettingsProvider = ({ children }) => {
         ...prev,
         email_notif: user.email_notif ?? prev.email_notif,
         push_notif: user.push_notif ?? prev.push_notif,
-        sms_tracking: user.sms_tracking ?? prev.sms_tracking,
-        two_factor_enabled: user.two_factor_enabled ?? prev.two_factor_enabled
+        sms_tracking: user.sms_tracking ?? prev.sms_tracking
       }));
     }
   }, [user]);
@@ -73,7 +71,7 @@ export const SettingsProvider = ({ children }) => {
     setSettings(prev => ({ ...prev, [key]: value }));
 
     // Persist to backend if a user is logged in and it's a preference field
-    const persistentKeys = ['email_notif', 'push_notif', 'sms_tracking', 'two_factor_enabled'];
+    const persistentKeys = ['email_notif', 'push_notif', 'sms_tracking'];
     if (user && persistentKeys.includes(key)) {
       try {
         const result = await updateProfile({ [key]: value });

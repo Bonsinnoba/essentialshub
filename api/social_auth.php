@@ -36,14 +36,6 @@ $providers = [
         'scopes' => ['openid', 'email', 'profile'],
         'scopeSeparator' => ' ',
     ]),
-    'facebook' => new GenericProvider([
-        'clientId' => $config['FACEBOOK_CLIENT_ID'] ?? '',
-        'clientSecret' => $config['FACEBOOK_CLIENT_SECRET'] ?? '',
-        'redirectUri' => $config['FACEBOOK_REDIRECT'] ?? '',
-        'urlAuthorize' => 'https://www.facebook.com/v18.0/dialog/oauth',
-        'urlAccessToken' => 'https://graph.facebook.com/v18.0/oauth/access_token',
-        'urlResourceOwnerDetails' => 'https://graph.facebook.com/me?fields=id,name,email',
-    ]),
     'github' => new GenericProvider([
         'clientId' => $config['GITHUB_CLIENT_ID'] ?? '',
         'clientSecret' => $config['GITHUB_CLIENT_SECRET'] ?? '',
@@ -63,7 +55,6 @@ if (!isset($providers[$provider])) {
 // Require credentials so we don't send user to provider with missing client_id (e.g. Google "Missing required parameter: client_id")
 $requiredKeys = [
     'google'   => ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT'],
-    'facebook' => ['FACEBOOK_CLIENT_ID', 'FACEBOOK_CLIENT_SECRET', 'FACEBOOK_REDIRECT'],
     'github'   => ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_REDIRECT'],
 ];
 foreach ($requiredKeys[$provider] as $key) {
@@ -106,8 +97,6 @@ if (!$code) {
         $queryParams['prompt'] = 'select_account';
         // Also clear any cached login hint
         unset($queryParams['login']);
-    } elseif ($provider === 'facebook') {
-        $queryParams['auth_type'] = 'rerequest';
     }
 
     $authorizationUrl = $parsed['scheme'] . '://' . $parsed['host'] . $parsed['path'] . '?' . http_build_query($queryParams);
@@ -132,10 +121,6 @@ try {
 
     switch ($provider) {
         case 'google':
-            $email = $userInfo['email'] ?? null;
-            $name = $userInfo['name'] ?? null;
-            break;
-        case 'facebook':
             $email = $userInfo['email'] ?? null;
             $name = $userInfo['name'] ?? null;
             break;
@@ -196,8 +181,8 @@ try {
         $providerId = $userInfo['id'] ?? $userInfo['sub'] ?? null;
         $randomPassword = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
         
-        $insertStmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, id_verified, auth_provider, auth_provider_id, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, NOW(), NOW())");
-        $insertStmt->execute([$name ?: 'New User', $email, $randomPassword, $provider, $providerId]);
+        $insertStmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, id_verified, auth_provider, auth_provider_id, avatar_text, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, ?, NOW(), NOW())");
+        $insertStmt->execute([$name ?: 'New User', $email, $randomPassword, $provider, $providerId, generateInitials($name ?: 'New User')]);
         
         $newUserId = $pdo->lastInsertId();
         
@@ -220,12 +205,18 @@ try {
 
     // issue token
     $token = generateToken($user['id']);
-    // if front-end URL configured, redirect there with token instead of dumping JSON
+
+    // Set HttpOnly Cookie for session persistence (matches login.php)
+    setcookie('ehub_session', $token, [
+        'expires' => time() + (60 * 60 * 24), // 24 hours
+        'path' => '/',
+        'domain' => '', // Current domain
+        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Strict'
+    ]);
     $frontend = $config['FRONTEND_URL'] ?? '';
     if ($frontend) {
-        // Only encode the minimal fields the frontend needs.
-        // NEVER include password_hash, two_factor_secret, profile_image (base64 LONGTEXT), etc.
-        // Those cause ERR_RESPONSE_HEADERS_TOO_BIG.
         $minimalUser = [
             'id'                 => (int)$user['id'],
             'name'               => $user['name'],
@@ -234,18 +225,22 @@ try {
             'address'            => $user['address'] ?? '',
             'level'              => (int)($user['level'] ?? 1),
             'level_name'         => $user['level_name'] ?? 'Starter',
-            'avatar_text'        => $user['avatar_text'] ?? strtoupper(substr($user['name'] ?? 'U', 0, 2)),
-            'profile_image'      => null, // omit — can be fetched later from profile
+            'avatar_text'        => ($user['avatar_text'] && $user['avatar_text'] !== 'U') ? $user['avatar_text'] : generateInitials($user['name'] ?? 'U'),
+            'profile_image'      => null,
             'role'               => $user['role'] ?? 'customer',
             'email_notif'        => (bool)($user['email_notif'] ?? true),
             'push_notif'         => (bool)($user['push_notif'] ?? true),
             'sms_tracking'       => (bool)($user['sms_tracking'] ?? true),
-            'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false),
             'theme'              => $user['theme'] ?? 'blue',
         ];
-        $encodedUser = urlencode(base64_encode(json_encode($minimalUser)));
-        $location = rtrim($frontend, '/') . '/?social_token=' . urlencode($token) . '&social_user=' . $encodedUser;
-        header('Location: ' . $location);
+        $encodedUser = base64_encode(json_encode($minimalUser));
+        $location = rtrim($frontend, '/') . '/?social_token=' . urlencode($token) . '&social_user=' . urlencode($encodedUser);
+        
+        // Use window.location.replace to prevent history bloat (Backward/Forward situtation fix)
+        header('Content-Type: text/html; charset=UTF-8');
+        echo "<html><head><title>Redirecting...</title></head><body>
+              <script>window.location.replace('" . addslashes($location) . "');</script>
+              </body></html>";
         exit;
     }
 
@@ -260,7 +255,7 @@ try {
             'level' => $user['level'] ?? 1,
             'levelName' => $user['level_name'] ?? 'Starter',
             'avatar' => $user['avatar_text'] ?? '',
-            'profileImage' => $user['profile_image'] ?? null,
+            'profileImage' => (strlen($user['profile_image'] ?? '') > 50000) ? null : ($user['profile_image'] ?? null),
             'role' => $user['role'],
             'email_notif' => (bool)($user['email_notif'] ?? true),
             'push_notif' => (bool)($user['push_notif'] ?? true),
@@ -271,7 +266,7 @@ try {
 } catch (Exception $e) {
     // on error, try to redirect back to front-end with message
     $err = $e->getMessage();
-    error_log("SOCIAL AUTH FATAL EXCEPTION: " . get_class($e) . " - " . $e->getMessage() . (method_exists($e, "getResponseBody") ? " BODY: " . print_r($e->getResponseBody(), true) : "") . "\n", 3, __DIR__ . "/social_debug.log");
+    error_log("SOCIAL AUTH FATAL EXCEPTION: " . get_class($e) . " - " . $e->getMessage() . (($e instanceof \League\OAuth2\Client\Provider\Exception\IdentityProviderException) ? " BODY: " . print_r($e->getResponseBody(), true) : "") . "\n", 3, __DIR__ . "/social_debug.log");
     $frontend = $config['FRONTEND_URL'] ?? '';
     if ($frontend) {
         $location = rtrim($frontend, '/') . '/?social_error=' . urlencode($err);

@@ -1,16 +1,11 @@
-# Protect sensitive files
-<FilesMatch "(\.env\.php|db\.php|security\.php|cors_middleware\.php|schema\.sql|\.txt|\.log)$">
+# Protect sensitive files and config
+<FilesMatch "(\.env\.php|db\.php|security\.php|cors_middleware\.php|schema\.sql|\.txt|\.log|\.htaccess)$">
     Order Deny,Allow
     Deny from all
 </FilesMatch>
 
 # Allow access to API endpoints
-<FilesMatch "^(index|login|register|auth|products|get_products|orders|update_profile|verify_payment|admin_.*|get_slider|check_user_status|wallet|delete_account|coupons|notifications|reviews|wishlist|cart_sync|track_order)\.php$">
+<FilesMatch "^(index|login|register|auth|products|get_products|orders|update_profile|verify_payment|admin_.*|super_.*|get_slider|check_user_status|wallet|delete_account|coupons|notifications|reviews|wishlist|cart_sync|track_order|social_auth)\.php$">
     Order Allow,Deny
     Allow from all
 </FilesMatch>
-
-# Enable CORS for all allowed endpoints (Middleware handles this, but Apache can too)
-Header set Access-Control-Allow-Origin "*"
-Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"

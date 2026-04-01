@@ -175,7 +175,7 @@ export default function MaintenancePage() {
 
       {/* Social links */}
       <div style={{ marginTop: '32px', display: 'flex', gap: '16px', zIndex: 1 }}>
-        {['Facebook', 'Instagram', 'Twitter/X'].map(s => (
+        {['Instagram', 'Twitter/X'].map(s => (
           <span key={s} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>{s}</span>
         ))}
       </div>

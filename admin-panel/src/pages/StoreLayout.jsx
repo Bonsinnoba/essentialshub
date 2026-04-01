@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Library, 
   MapPin, 
@@ -231,7 +231,7 @@ export default function StoreLayout() {
                 padding: '10px 16px', 
                 borderRadius: '8px', 
                 border: '2px solid var(--primary-blue)', 
-                background: 'white', 
+                background: 'var(--bg-surface)', 
                 color: 'var(--text-main)', 
                 fontWeight: 700,
                 fontSize: '15px',
@@ -332,7 +332,19 @@ export default function StoreLayout() {
                     <td style={{ padding: '16px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                          <img src={loc.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          {loc.image_url ? (
+                            <img
+                              src={loc.image_url.startsWith('http') || loc.image_url.startsWith('data:')
+                                ? loc.image_url
+                                : `http://electrocom.local/api/${loc.image_url.startsWith('/') ? loc.image_url.slice(1) : loc.image_url}`
+                              }
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <Package size={16} style={{ opacity: 0.3 }} />
+                          )}
                         </div>
                         <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{loc.product_name}</span>
                       </div>

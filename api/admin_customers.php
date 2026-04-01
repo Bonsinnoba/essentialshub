@@ -40,7 +40,7 @@ if ($method === 'GET') {
         // Fetch all users with basic order summary and branch name
         $stmt = $pdo->prepare("
             SELECT 
-                u.*, 
+                u.id, u.name, u.email, u.phone, u.address, u.role, u.level, u.level_name, u.avatar_text, u.status, u.created_at, u.branch_id,
                 sb.name as branch_name,
                 (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as orders_count,
                 (SELECT SUM(total_amount) FROM orders WHERE user_id = u.id) as total_spent
@@ -52,10 +52,9 @@ if ($method === 'GET') {
         $stmt->execute($params);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Security & Performance: Remove sensitive/heavy data
+        // Final safety check
         foreach ($users as &$user) {
-            unset($user['password_hash']);
-            if (isset($user['profile_image'])) unset($user['profile_image']);
+            unset($user['password_hash']); // Should be excluded from SELECT anyway, but double safe
         }
 
         echo json_encode(['success' => true, 'data' => $users]);
@@ -77,6 +76,18 @@ if ($method === 'GET') {
         }
 
         try {
+            // SECURITY: Ensure non-super admins cannot delete super admins
+            if ($role !== 'super') {
+                $check = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+                $check->execute([$id]);
+                $targetRole = $check->fetchColumn();
+                if ($targetRole === 'super') {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Permission denied: Cannot delete super admin.']);
+                    exit;
+                }
+            }
+
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$id]);
 

@@ -36,10 +36,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (newToken, newUser) => {
-    localStorage.setItem('ehub_token', newToken);
-    localStorage.setItem('ehub_user', JSON.stringify(newUser));
-    setToken(newToken);
-    setUser(newUser);
+    try {
+        localStorage.setItem('ehub_token', newToken);
+        
+        // Minimize user data to avoid QuotaExceededError
+        const minimizedUser = { ...newUser };
+        if (minimizedUser.profileImage && minimizedUser.profileImage.length > 50000) {
+            console.warn('Profile image too large for localStorage, omitting.');
+            delete minimizedUser.profileImage;
+        }
+        
+        localStorage.setItem('ehub_user', JSON.stringify(minimizedUser));
+        setToken(newToken);
+        setUser(newUser); // Keep full object in memory
+    } catch (e) {
+        console.error('Failed to save auth to localStorage:', e);
+        // If it still fails, clear everything and try to save AT LEAST the token
+        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+            localStorage.clear();
+            try {
+                localStorage.setItem('ehub_token', newToken);
+            } catch (e2) {
+                console.error('CRITICAL: Failed to save token even after clear:', e2);
+            }
+        }
+    }
   };
 
   const logout = () => {

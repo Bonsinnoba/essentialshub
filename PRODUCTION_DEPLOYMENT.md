@@ -90,7 +90,7 @@ server {
 - [ ] **Diagnostic Cleanup**: Ensure no `check_*.php` or `test_*.php` scripts remain in the API directory.
 - [ ] **Database**: Run `api/schema.sql` to initialize the production tables.
 - [ ] **Brand Assets**: Verify that `logo.png` and favicons reflect the ElectroCom brand in `/public`.
-- [ ] **Third-Party**: Update Redirect URIs in Google/Facebook developer consoles to match your new production domain.
+- [ ] **Third-Party**: Update Redirect URIs in Google and GitHub developer consoles to match your new production domain.
 
 ---
 

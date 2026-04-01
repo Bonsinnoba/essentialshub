@@ -28,7 +28,7 @@ export default function CustomerManager() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
 
   
   const user = JSON.parse(localStorage.getItem('ehub_user') || '{}');
@@ -91,7 +91,7 @@ export default function CustomerManager() {
     e.preventDefault();
     // For now we don't have a create/update user API in admin_customers.php
     // as users usually register themselves.
-    addNotification("User editing is disabled for security. Users manage their own profiles.", "info");
+    addToast("User editing is disabled for security. Users manage their own profiles.", "info");
 
     handleCloseModal();
   };
@@ -104,7 +104,7 @@ export default function CustomerManager() {
         await toggleUserStatus(customer.id, customer.status || 'Active');
         loadCustomers();
     } catch (error) {
-        addNotification("Failed to update user status", "error");
+        addToast("Failed to update user status", "error");
 
     }
   };

@@ -16,7 +16,7 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const { user } = useUser();
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
 
   const [cartItems, setCartItems] = useState(() => {
     return secureStorage.getItem('cart', user?.id) || [];
@@ -50,7 +50,7 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = (product, quantity = 1, color = 'Default') => {
     if (!user) {
-        addNotification('Please login to add items to an active cart', 'error');
+        addToast('Please login to add items to an active cart', 'error');
         return;
     }
     setCartItems(prev => {
@@ -97,7 +97,7 @@ export const CartProvider = ({ children }) => {
       const result = await validateCoupon(code, subtotal);
       if (result.success) {
         setAppliedCoupon(result.coupon);
-        addNotification('Coupon applied successfully', 'success');
+        addToast('Coupon applied successfully', 'success');
         return true;
       } else {
         setCouponError(result.error || 'Invalid coupon code');
@@ -114,7 +114,7 @@ export const CartProvider = ({ children }) => {
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponError('');
-    addNotification('Coupon removed', 'info');
+    addToast('Coupon removed', 'info');
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);

@@ -27,7 +27,7 @@ const stringToSpecs = (str) => {
 };
 
 export default function ProductManager() {
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   const [products, setProducts] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -133,7 +133,7 @@ export default function ProductManager() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        addNotification('Image is too large. Max 5MB', 'error');
+        addToast('Image is too large. Max 5MB', 'error');
         return;
       }
       const reader = new FileReader();
@@ -148,7 +148,7 @@ export default function ProductManager() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        addNotification('Image is too large. Max 5MB', 'error');
+        addToast('Image is too large. Max 5MB', 'error');
         return;
       }
       const reader = new FileReader();
@@ -165,11 +165,11 @@ export default function ProductManager() {
     const file = e.target.files[0];
     if (file) {
         if (file.type !== 'application/pdf') {
-            addNotification('Please upload a PDF file', 'error');
+            addToast('Please upload a PDF file', 'error');
             return;
         }
         if (file.size > 10 * 1024 * 1024) {
-            addNotification('File is too large. Max 10MB', 'error');
+            addToast('File is too large. Max 10MB', 'error');
             return;
         }
         const reader = new FileReader();
@@ -213,12 +213,12 @@ export default function ProductManager() {
       } else {
         await createProduct(apiData);
       }
-      addNotification(editingProduct ? 'Product updated successfully' : 'Product created successfully', 'success');
+      addToast(editingProduct ? 'Product updated successfully' : 'Product created successfully', 'success');
       handleCloseModal();
       loadProducts();
     } catch (err) {
       console.error("Save error:", err);
-      addNotification(err.message || 'Error saving product', 'error');
+      addToast(err.message || 'Error saving product', 'error');
     } finally {
       setSaving(false);
     }

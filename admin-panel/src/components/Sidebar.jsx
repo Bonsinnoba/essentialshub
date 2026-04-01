@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, Package, ShoppingCart, Users, Settings, Tag,
   LogOut, MapPin, ShieldAlert, Database, Globe, Zap, Activity, ShieldCheck,
-  Star, Bell, ShoppingBag, RotateCcw
+  Star, Bell, ShoppingBag, RotateCcw, ClipboardList, MessageSquare
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -19,6 +19,8 @@ export default function Sidebar() {
     { icon: <LayoutDashboard size={20} />, label: isAccountant ? 'Finance Dash' : 'Dashboard', path: '/', visible: true },
     { icon: <Package size={20} />, label: 'Products', path: '/products', visible: !isAccountant },
     { icon: <ShoppingCart size={20} />, label: isAccountant ? 'Audits / Orders' : 'Orders', path: '/orders', visible: !isMarketing },
+    { icon: <Zap size={20} />, label: 'POS Checkout', path: '/pos', visible: !isMarketing && !isAccountant },
+    { icon: <ClipboardList size={20} />, label: 'Stock Requests', path: '/stock-requests', visible: !isMarketing && !isAccountant },
     { icon: <RotateCcw size={20} />, label: 'Returns', path: '/returns', visible: !isMarketing && !isAccountant },
     { icon: <MapPin size={20} />, label: 'Store Layout', path: '/inventory', visible: !isAccountant && !isMarketing },
     { icon: <Users size={20} />, label: isAccountant ? 'Billing List' : 'Customers', path: '/customers', visible: !isMarketing },
@@ -28,6 +30,7 @@ export default function Sidebar() {
     { icon: <ShoppingBag size={20} />, label: 'Abandoned Carts', path: '/abandoned-carts', visible: !isMarketing },
     { icon: <Zap size={20} />, label: 'Broadcast Tool', path: '/broadcast', visible: !isAccountant },
     { icon: <Bell size={20} />, label: 'System Alerts', path: '/notifications', visible: true },
+    { icon: <MessageSquare size={20} />, label: 'Staff Hub', path: '/staff-chat', visible: !isAccountant },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings', visible: !isMarketing },
   ].filter(item => item.visible);
 

@@ -8,7 +8,7 @@ export default function ReviewManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRating, setFilterRating] = useState('All');
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
 
   useEffect(() => {
     loadReviews();
@@ -22,7 +22,7 @@ export default function ReviewManager() {
         setReviews(result.data);
       }
     } catch (error) {
-      addNotification("Failed to load reviews", "error");
+      addToast("Failed to load reviews", "error");
     } finally {
       setLoading(false);
     }
@@ -34,10 +34,10 @@ export default function ReviewManager() {
       const result = await deleteReview(id);
       if (result.success) {
         setReviews(prev => prev.filter(r => r.id !== id));
-        addNotification("Review deleted successfully", "success");
+        addToast("Review deleted successfully", "success");
       }
     } catch (error) {
-      addNotification("Failed to delete review", "error");
+      addToast("Failed to delete review", "error");
     }
   };
 

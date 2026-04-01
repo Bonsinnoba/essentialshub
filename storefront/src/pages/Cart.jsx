@@ -11,7 +11,7 @@ export default function Cart() {
   const { user, openAuthModal } = useUser();
   const { cartItems, removeFromCart, updateQuantity, subtotal, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { addNotification } = useNotifications();
+  const { addToast } = useNotifications();
   
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [couponInput, setCouponInput] = useState('');
@@ -30,14 +30,14 @@ export default function Cart() {
     
     // Remove from cart
     removeFromCart(confirmDelete.id, confirmDelete.selectedColor);
-    addNotification(`${confirmDelete.name} moved to wishlist`, 'success');
+    addToast(`${confirmDelete.name} moved to wishlist`, 'success');
     setConfirmDelete(null);
   };
 
   const handleFinalDelete = () => {
     if (!confirmDelete) return;
     removeFromCart(confirmDelete.id, confirmDelete.selectedColor);
-    addNotification(`${confirmDelete.name} removed from cart`, 'info');
+    addToast(`${confirmDelete.name} removed from cart`, 'info');
     setConfirmDelete(null);
   };
 
