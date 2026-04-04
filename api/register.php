@@ -78,9 +78,10 @@ try {
     $verificationMethod = sanitizeInput($data['verification_method'] ?? 'email');
 
 
+    $region = sanitizeInput($data['region'] ?? 'Greater Accra');
 
-    $stmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, phone, avatar_text, verification_code, verification_method) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $email, $hashedPassword, $phone, $avatarText, $verificationCode, $verificationMethod]);
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password_hash, phone, avatar_text, region, verification_code, verification_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$name, $email, $hashedPassword, $phone, $avatarText, $region, $verificationCode, $verificationMethod]);
 
     // Dispatch verification code
     require_once 'notifications.php';
@@ -110,6 +111,7 @@ try {
                 'name' => $name,
                 'email' => $email,
                 'phone' => $phone,
+                'region' => $region,
                 'avatar' => $avatarText,
                 'level' => 1,
                 'levelName' => 'Starter',

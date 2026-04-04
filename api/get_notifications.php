@@ -82,6 +82,41 @@ if ($method === 'GET') {
         http_response_code(500);
         echo json_encode(['success' => false, 'error' => 'Database error']);
     }
+} elseif ($method === 'POST' && $action === 'delete') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $notificationId = $data['id'] ?? null;
+
+    if (!$notificationId) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Notification ID required']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT user_id FROM notifications WHERE id = ?");
+        $stmt->execute([$notificationId]);
+        $notif = $stmt->fetch();
+
+        if (!$notif) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Notification not found']);
+            exit;
+        }
+
+        if ($notif['user_id'] != $userId && !in_array($role, RBAC_ADMIN_GROUP) && $role !== 'super') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Forbidden']);
+            exit;
+        }
+
+        $delete = $pdo->prepare("DELETE FROM notifications WHERE id = ?");
+        $delete->execute([$notificationId]);
+
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database error']);
+    }
 } else {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);

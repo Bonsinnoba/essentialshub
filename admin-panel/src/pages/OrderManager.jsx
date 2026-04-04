@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Truck, CheckCircle, Clock, X, MapPin, User, Package, Calendar, Mail, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { fetchOrders, updateOrderStatus, resendReceipt, verifyDelivery } from '../services/api';
+import { fetchOrders, updateOrderStatus, resendReceipt, verifyDelivery, API_BASE_URL } from '../services/api';
+import { useConfirm } from '../context/ConfirmContext';
+import { formatPrice } from '../utils/formatPrice';
 
 export default function OrderManager() {
   const [orders, setOrders] = useState([]);
@@ -10,6 +12,7 @@ export default function OrderManager() {
   const [liveStats, setLiveStats] = useState({ review: 0, shipped: 0, deliveredToday: 0 });
   const [otp, setOtp] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   
   const user = JSON.parse(localStorage.getItem('ehub_user') || '{}');
@@ -162,7 +165,7 @@ export default function OrderManager() {
                   </div>
                 </td>
                 <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{o.date}</td>
-                <td style={{ padding: '16px 24px', fontWeight: 700 }}>${o.amount.toFixed(2)}</td>
+                <td style={{ padding: '16px 24px', fontWeight: 700 }}>{formatPrice(o.amount)}</td>
                 <td style={{ padding: '16px 24px' }}>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {o.type === 'Delivery' ? <Truck size={14} /> : <MapPin size={14} />} {o.type}
@@ -220,7 +223,7 @@ export default function OrderManager() {
                 <span style={{ fontSize: '12px', color: 'var(--primary-blue)', fontWeight: 700 }}>{selectedOrder.id}</span>
               </div>
                 <button 
-                onClick={() => window.open(`http://localhost:8000/invoice.php?order_id=${selectedOrder.id}`, '_blank')}
+                onClick={() => window.open(`${API_BASE_URL}/invoice.php?order_id=${selectedOrder.id}`, '_blank')}
                 className="btn" 
                 style={{ padding: '6px 12px', fontSize: '11px', background: 'var(--primary-blue)', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
@@ -228,7 +231,7 @@ export default function OrderManager() {
               </button>
                 <button 
                 onClick={async () => {
-                  if(window.confirm('Resend receipt to customer?')) {
+                  if(await confirm('Resend receipt to customer?')) {
                     const res = await resendReceipt(selectedOrder.id);
                     if(res.success) alert('Receipt re-sent!');
                     else alert('Failed: ' + res.error);
@@ -256,10 +259,15 @@ export default function OrderManager() {
                 <div style={{ marginTop: '12px', display: 'flex', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
                   <MapPin size={16} style={{ flexShrink: 0 }} /> {selectedOrder.address}
                 </div>
-                {selectedOrder.review_requested_at && (
-                   <div style={{ marginTop: '12px', padding: '8px 12px', background: 'var(--success-bg)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '12px', fontWeight: 600 }}>
-                      <CheckCircle size={14} /> Review request sent on {new Date(selectedOrder.review_requested_at).toLocaleDateString()}
+                {selectedOrder.user_region && (
+                   <div style={{ marginTop: '12px', display: 'flex', gap: '8px', color: 'var(--accent-blue)', fontSize: '13px', fontWeight: 600 }}>
+                     <Globe size={16} style={{ flexShrink: 0 }} /> Region: {selectedOrder.user_region}
                    </div>
+                )}
+                {selectedOrder.review_requested_at && (
+                    <div style={{ marginTop: '12px', padding: '8px 12px', background: 'var(--success-bg)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '12px', fontWeight: 600 }}>
+                       <CheckCircle size={14} /> Review request sent on {new Date(selectedOrder.review_requested_at).toLocaleDateString()}
+                    </div>
                 )}
               </div>
             </section>
@@ -290,13 +298,13 @@ export default function OrderManager() {
                         )}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 800 }}>${(item.price * item.qty).toFixed(2)}</div>
+                    <div style={{ fontWeight: 800 }}>{formatPrice(item.price * item.qty)}</div>
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: '16px', padding: '16px', borderTop: '2px dashed var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700 }}>Total Amount</span>
-                <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary-blue)' }}>${selectedOrder.amount.toFixed(2)}</span>
+                <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary-blue)' }}>{formatPrice(selectedOrder.amount)}</span>
               </div>
             </section>
 
@@ -304,6 +312,28 @@ export default function OrderManager() {
               <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Calendar size={16} /> Fulfillment Status
               </h3>
+              
+              {/* --- NEW: Dispatch Source Display --- */}
+              <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'var(--bg-surface-secondary)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Dispatch Source</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ 
+                    padding: '8px', 
+                    background: selectedOrder.branch_type === 'headquarters' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                    color: selectedOrder.branch_type === 'headquarters' ? 'var(--primary-blue)' : 'var(--success)',
+                    borderRadius: '8px'
+                  }}>
+                    {selectedOrder.branch_type === 'headquarters' ? <ShieldCheck size={18} /> : <MapPin size={18} />}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700 }}>{selectedOrder.branch_name || 'Accra (Headquarters)'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {selectedOrder.branch_type === 'headquarters' ? 'Primary Fulfillment Center' : 'Local Regional Warehouse'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <button 
                   onClick={() => handleUpdateStatus(selectedOrder.id, 'Shipped')}

@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 
 // Authenticate and Require Roles
 try {
-    $userId = requireRole(['admin'], $pdo);
+    $userId = requireRole(RBAC_ALL_ADMINS, $pdo);
     $userName = getUserName($userId, $pdo);
 } catch (Exception $e) {
     http_response_code(401);

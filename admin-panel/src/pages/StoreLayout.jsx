@@ -14,11 +14,13 @@ import {
   Filter,
   X
 } from 'lucide-react';
-import { fetchStoreData, saveProductLocation, deleteProductLocation, fetchProducts, createBranch } from '../services/api';
+import { fetchStoreData, saveProductLocation, deleteProductLocation, fetchProducts, createBranch, API_BASE_URL } from '../services/api';
+import { useConfirm } from '../context/ConfirmContext';
 
 const STANDARD_SHELVES = ['Alpha', 'Beta', 'Gamma', 'Delta'];
 
 export default function StoreLayout() {
+  const { confirm } = useConfirm();
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [locations, setLocations] = useState([]);
@@ -151,7 +153,7 @@ export default function StoreLayout() {
   };
 
   const handleDeleteLocation = async (id) => {
-    if (!window.confirm("Remove item from this location?")) return;
+    if (!(await confirm("Remove item from this location?"))) return;
     try {
       const res = await deleteProductLocation(id);
       if (res.success) {
@@ -336,7 +338,7 @@ export default function StoreLayout() {
                             <img
                               src={loc.image_url.startsWith('http') || loc.image_url.startsWith('data:')
                                 ? loc.image_url
-                                : `http://electrocom.local/api/${loc.image_url.startsWith('/') ? loc.image_url.slice(1) : loc.image_url}`
+                                : `${API_BASE_URL}/${loc.image_url.startsWith('/') ? loc.image_url.slice(1) : loc.image_url}`
                               }
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}

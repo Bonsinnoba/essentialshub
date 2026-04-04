@@ -134,7 +134,7 @@ export default function Dashboard() {
         <StatCard 
           icon={<DollarSign size={24} />} 
           label="Total Revenue" 
-          value={`GHS ${data.total_revenue.toLocaleString()}`} 
+          value={`GH₵ ${data.total_revenue.toLocaleString()}`} 
           trend="+15.4%" 
           trendLabel="Combined Growth"
           color="var(--primary-blue)"
@@ -142,13 +142,13 @@ export default function Dashboard() {
         <StatCard 
           icon={<ShoppingBag size={24} />} 
           label="Online Sales" 
-          value={`GHS ${data.revenue_online.toLocaleString()}`} 
+          value={`GH₵ ${data.revenue_online.toLocaleString()}`} 
           trendLabel="Platform Revenue"
         />
         <StatCard 
           icon={<Zap size={24} />} 
           label="POS Sales" 
-          value={`GHS ${data.revenue_pos.toLocaleString()}`} 
+          value={`GH₵ ${data.revenue_pos.toLocaleString()}`} 
           color="var(--accent-gold)"
           trendLabel="Store Revenue"
         />
@@ -162,7 +162,7 @@ export default function Dashboard() {
         <StatCard 
           icon={<Activity size={24} />} 
           label="Avg Order" 
-          value={`GHS ${data.avg_order_value.toLocaleString()}`} 
+          value={`GH₵ ${data.avg_order_value.toLocaleString()}`} 
           color="var(--info)"
           trendLabel="Per Transaction"
         />
@@ -221,7 +221,7 @@ export default function Dashboard() {
 
               <div style={{ borderLeft: '4px solid var(--accent-gold)', paddingLeft: '16px' }}>
                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Revenue Peak</div>
-                 <div style={{ fontSize: '20px', fontWeight: 900, marginTop: '4px' }}>GHS {data.strategic_insights.revenue_peak.toLocaleString()}</div>
+                 <div style={{ fontSize: '20px', fontWeight: 900, marginTop: '4px' }}>GH₵ {data.strategic_insights.revenue_peak.toLocaleString()}</div>
                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>Highest daily volume</div>
               </div>
 
@@ -232,14 +232,14 @@ export default function Dashboard() {
               </div>
            </div>
 
-           <div className="glass" style={{ marginTop: 'auto', padding: '16px', borderRadius: '12px', background: 'rgba(var(--accent-blue-rgb), 0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
-                <TrendingUp size={16} color="var(--primary-blue)" /> Business Health
-              </div>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                Operational efficiency is stable. Recommend increasing inventory for top-selling assets.
-              </p>
-           </div>
+            <div className="glass" style={{ marginTop: 'auto', padding: '16px', borderRadius: '12px', background: 'rgba(var(--accent-blue-rgb), 0.05)' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>
+                 <TrendingUp size={16} color={data.strategic_insights.health_score > 80 ? 'var(--success)' : data.strategic_insights.health_score > 60 ? 'var(--accent-gold)' : 'var(--danger)'} /> Business Health ({data.strategic_insights.health_score}%)
+               </div>
+               <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                 {data.strategic_insights.health_message}
+               </p>
+            </div>
         </div>
 
         {/* Category Breakdown */}
@@ -250,7 +250,7 @@ export default function Dashboard() {
                 <div key={cat.category}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                       <span>{cat.category}</span>
-                      <span style={{ color: 'var(--primary-blue)' }}>GHS {Number(cat.revenue).toLocaleString()}</span>
+                      <span style={{ color: 'var(--primary-blue)' }}>GH₵ {Number(cat.revenue).toLocaleString()}</span>
                    </div>
                    <div style={{ height: '4px', background: 'var(--bg-surface-secondary)', borderRadius: '10px' }}>
                       <div style={{ 
@@ -295,7 +295,7 @@ export default function Dashboard() {
                                 {order.order_type || 'online'}
                              </span>
                           </td>
-                          <td style={{ padding: '12px', fontWeight: 700 }}>GHS {Number(order.total_amount).toLocaleString()}</td>
+                          <td style={{ padding: '12px', fontWeight: 700 }}>GH₵ {Number(order.total_amount).toLocaleString()}</td>
                           <td style={{ padding: '12px' }}>
                              <span style={{ 
                                color: order.status === 'delivered' ? 'var(--success)' : 'var(--warning)',

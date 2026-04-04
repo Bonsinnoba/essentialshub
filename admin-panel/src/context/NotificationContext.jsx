@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../services/api';
 
 const NotificationContext = createContext();
 
@@ -24,7 +25,7 @@ export const NotificationProvider = ({ children }) => {
 
   const fetchServerNotifications = async () => {
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/get_notifications.php?admin=true&_t=${Date.now()}`, {
+        const response = await fetch(`${API_BASE_URL}/get_notifications.php?admin=true&_t=${Date.now()}`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('ehub_token')}`
             }
@@ -68,7 +69,7 @@ export const NotificationProvider = ({ children }) => {
     
     if (typeof id === 'number' && id < 1000000000000) {
         try {
-            await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/get_notifications.php?action=mark_read`, {
+            await fetch(`${API_BASE_URL}/get_notifications.php?action=mark_read`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -89,8 +90,23 @@ export const NotificationProvider = ({ children }) => {
     }));
   };
 
-  const deleteNotification = (id) => {
+  const deleteNotification = async (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+
+    if (typeof id === 'number' && id < 1000000000000) {
+        try {
+            await fetch(`${API_BASE_URL}/get_notifications.php?action=delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('ehub_token')}`
+                },
+                body: JSON.stringify({ id })
+            });
+        } catch (error) {
+            console.error("Failed to delete notification on server", error);
+        }
+    }
   };
 
   const clearAllNotifications = () => {

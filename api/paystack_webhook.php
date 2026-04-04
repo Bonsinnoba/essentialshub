@@ -7,6 +7,7 @@
 
 require_once 'db.php';
 require_once 'security.php';
+require_once 'order_utils.php';
 
 // Disable error reporting for cleaner output to Paystack
 error_reporting(0);
@@ -73,25 +74,10 @@ if ($event['event'] === 'charge.success') {
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($order) {
-            if ($order['status'] === 'pending') {
-                $pdo->prepare("UPDATE orders SET status = 'processing' WHERE id = ?")->execute([$order['id']]);
-                logger('ok', 'WEBHOOK', "Order #{$order['id']} updated to processing via webhook.");
-            }
+            completeOrder($order['id'], $pdo);
+            logger('ok', 'WEBHOOK', "Order #{$order['id']} completed via webhook.");
         } else {
-            // Check if it's a wallet top-up (reference might be in wallet_transactions)
-            $stmt = $pdo->prepare("SELECT id FROM wallet_transactions WHERE reference = ?");
-            $stmt->execute([$reference]);
-            if (!$stmt->fetch()) {
-                // If not order and not wallet yet, maybe it's a top-up we didn't record yet
-                if (($data['metadata']['type'] ?? '') === 'wallet_topup') {
-                    $stmt = $pdo->prepare("INSERT INTO wallet_transactions (user_id, amount, type, reference, title, details, status) VALUES (?, ?, 'credit', ?, 'Wallet Top-up', 'Funded via Paystack (Webhook)', 'completed')");
-                    $stmt->execute([$userId, $amountPaid, $reference]);
-
-                    $stmt = $pdo->prepare("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?");
-                    $stmt->execute([$amountPaid, $userId]);
-                    logger('ok', 'WEBHOOK', "Wallet for User #$userId topped up via webhook.");
-                }
-            }
+            // Handle other payment types if necessary in the future
         }
 
         $pdo->commit();

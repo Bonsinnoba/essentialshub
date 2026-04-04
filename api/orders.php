@@ -2,6 +2,7 @@
 // backend/orders.php
 require_once 'db.php';
 require_once 'security.php';
+require_once 'order_utils.php';
 
 header('Content-Type: application/json');
 
@@ -41,8 +42,8 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         )");
 
         $cols = $pdo->query("DESCRIBE orders")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('payment_reference', $cols)) {
-            $pdo->exec("ALTER TABLE orders ADD COLUMN payment_reference VARCHAR(100) AFTER payment_method");
+        if (!in_array('order_number', $cols)) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN order_number VARCHAR(100) UNIQUE AFTER id");
         }
         if (!in_array('coupon_code', $cols)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) AFTER total_amount");
@@ -55,6 +56,9 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         }
         if (!in_array('delivery_otp', $cols)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN delivery_otp VARCHAR(10) DEFAULT NULL AFTER status");
+        }
+        if (!in_array('payment_reference', $cols)) {
+             $pdo->exec("ALTER TABLE orders MODIFY COLUMN payment_reference VARCHAR(100) UNIQUE");
         }
         if (!in_array('order_type', $cols)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN order_type ENUM('online', 'pos') DEFAULT 'online' AFTER user_id");
@@ -158,13 +162,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Use authenticated User ID instead of trusting input
     $userId = $authenticatedUserId;
 
-
-
+    // Resolve user data for shipping and fulfillment
+    $uStmt = $pdo->prepare("SELECT region FROM users WHERE id = ?");
+    $uStmt->execute([$userId]);
+    $userRegion = $uStmt->fetchColumn() ?: 'Greater Accra (GA)'; // Fallback to GA
+    
+    // Determine source branch (warehouse)
+    $sourceBranchId = resolveFulfillmentBranch($userRegion, $pdo);
+    $branchStmt = $pdo->prepare("SELECT name FROM store_branches WHERE id = ?");
+    $branchStmt->execute([$sourceBranchId]);
+    $sourceBranchName = $branchStmt->fetchColumn() ?: 'Main Warehouse';
     $items = $decoded['items'] ?? [];
     $totalAmount = (float)($decoded['total_amount'] ?? 0);
     $shippingAddress = sanitizeInput($decoded['shipping_address'] ?? '');
     $paymentMethod = sanitizeInput($decoded['payment_method'] ?? 'card');
-    $paymentReference = sanitizeInput($decoded['payment_reference'] ?? null);
+    
+    // CUSTOM ORDER REFERENCE: EC-[YYYY/MM]-[HASH]-[HH]
+    $paymentReference = $decoded['payment_reference'] ?? null;
+    // Track whether this is an external (Paystack) payment or an internal reference
+    $isExternalPayment = !empty($paymentReference);
+
+    if (!$paymentReference) {
+        $hash = substr(md5(uniqid(mt_rand(), true)), 0, 8);
+        $paymentReference = "EC-" . date('Y/m') . "-" . strtoupper($hash) . "-" . date('H');
+    }
+    $paymentReference = sanitizeInput($paymentReference);
     $couponCode = sanitizeInput($decoded['coupon_code'] ?? null);
     $discountAmount = (float)($decoded['discount_amount'] ?? 0);
 
@@ -174,8 +196,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Verify Payment if Reference Provided (Security Check)
-    if ($paymentReference && strpos($paymentMethod, 'Wallet') === false) {
+    // FIX #12: Only verify with Paystack for external payments.
+    // Internal/POS EC- references were not processed via Paystack and should skip this.
+    // verify_payment.php already verified Paystack payments before order creation.
+    if ($isExternalPayment) {
         $config = require '.env.php';
         $secretKey = $config['PAYSTACK_SECRET'] ?? "sk_test_ReplaceWithYourSecretKeyHere";
 
@@ -193,9 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Check amount match
         $paidAmount = $response['data']['amount'] / 100;
-        if (abs($paidAmount - $totalAmount) > 1.0) { // Allow small difference for fees/rounding
+        if (abs($paidAmount - $totalAmount) > 1.0) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Payment amount mismatch. Paid: ' . $paidAmount . ', Required: ' . $totalAmount]);
             exit;
@@ -205,24 +228,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logger('ok', 'PAYMENTS', "Paystack payment verified for GH\xc2\xa2 {$totalAmount} (Ref: {$paymentReference})");
     } else {
         $orderStatus = 'pending';
-        if ($paymentMethod === 'Wallet') {
-            logger('info', 'PAYMENTS', "Wallet payment initiated for GH\xc2\xa2 {$totalAmount} by {$authenticatedUserName}");
-        }
+    }
+    
+    // Check if an order with this reference already exists (prevent duplicates)
+    $checkStmt = $pdo->prepare("SELECT id FROM orders WHERE payment_reference = ?");
+    $checkStmt->execute([$paymentReference]);
+    if ($checkStmt->fetch()) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'Order reference already exists.']);
+        exit;
     }
 
     $pdo->beginTransaction();
 
     try {
-        // Create Order
+        // Add Items and update stock
+        foreach ($items as &$item) {
+            $productId = (int)$item['id'];
+            $quantity = (int)$item['quantity'];
+
+            // Security: Fetch latest product data to verify price
+            $pQuery = $pdo->prepare("SELECT price, discount_percent, sale_ends_at FROM products WHERE id = ?");
+            $pQuery->execute([$productId]);
+            $fullProduct = $pQuery->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$fullProduct) {
+                throw new Exception("Product ID {$productId} not found.");
+            }
+
+            // Verify/Set Effective Price
+            $verifiedPrice = getEffectivePrice($fullProduct);
+            $item['price'] = $verifiedPrice; // Override with server-side calculated price
+        }
+        unset($item);
+
+        // Calculate expected shipping based on subtotal (total excluding shipping)
+        $itemsSubtotal = 0;
+        foreach($items as $item) {
+            $itemsSubtotal += (float)$item['price'] * (int)$item['quantity'];
+        }
+        $afterCouponSubtotal = $itemsSubtotal - $discountAmount;
+        
+        $shippingInfo = calculateRegionalShipping($userRegion, $sourceBranchId, $afterCouponSubtotal, $pdo);
+        $expectedShipping = $shippingInfo['fee'];
+        $tax = $afterCouponSubtotal * 0.1;
+        $expectedTotal = $afterCouponSubtotal + $tax + $expectedShipping;
+
+        // Security check: verify total matches (allow small delta for rounding)
+        if (abs($totalAmount - $expectedTotal) > 1.0) {
+            $pdo->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => "Order total mismatch. Expected: $expectedTotal, Got: $totalAmount"]);
+            exit;
+        }
+
+        // Create Order (Initially Pending)
         $deliveryOtp = sprintf("%06d", mt_rand(100000, 999999));
-        $stmt = $pdo->prepare("INSERT INTO orders (user_id, total_amount, coupon_code, discount_amount, status, delivery_otp, shipping_address, payment_method, payment_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$userId, $totalAmount, $couponCode, $discountAmount, $orderStatus, $deliveryOtp, $shippingAddress, $paymentMethod, $paymentReference]);
+        $stmt = $pdo->prepare("INSERT INTO orders (user_id, total_amount, coupon_code, discount_amount, status, delivery_otp, shipping_address, payment_method, payment_reference, source_branch_id) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)");
+        $stmt->execute([$userId, $totalAmount, $couponCode, $discountAmount, $deliveryOtp, $shippingAddress, $paymentMethod, $paymentReference, $sourceBranchId]);
         $orderId = $pdo->lastInsertId();
 
-        // Add Items and update stock
+        // Update with human-readable order number (matching reference format for consistency)
+        $pdo->prepare("UPDATE orders SET order_number = ? WHERE id = ?")->execute([$paymentReference, $orderId]);
+
+        // FIX #8: Removed dead $updateStockStmt/$checkStockStmt — stock deduction
+        // happens inside completeOrder() via order_utils.php. These were never executed.
         $stmtItem = $pdo->prepare("INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?)");
-        $updateStockStmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?");
-        $checkStockStmt = $pdo->prepare("SELECT name, stock_quantity FROM products WHERE id = ?");
 
         foreach ($items as $item) {
             $productId = (int)$item['id'];
@@ -230,99 +301,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $price = (float)$item['price'];
 
             $stmtItem->execute([$orderId, $productId, $quantity, $price]);
-
-            // Decrease Stock
-            $updateStockStmt->execute([$quantity, $productId]);
-
-            // Low Stock Alert
-            $checkStockStmt->execute([$productId]);
-            $prod = $checkStockStmt->fetch(PDO::FETCH_ASSOC);
-            if ($prod && $prod['stock_quantity'] <= 10) {
-                // Log low stock for admin notification
-                logger('warning', 'SYSTEM', "Low Stock Alert: '{$prod['name']}' has only {$prod['stock_quantity']} left in stock.");
-
-                // insert a direct admin notification into the database
-                $adminNotifyStmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) SELECT id, ?, ?, 'info' FROM users WHERE role = 'admin' OR role = 'super'");
-                $adminNotifyStmt->execute(["Low Stock Alert", "Product '{$prod['name']}' is running low on stock. Only {$prod['stock_quantity']} remaining."]);
-            }
-        }
-
-        // Update Coupon Uses
-        if ($couponCode) {
-            $couponStmt = $pdo->prepare("UPDATE coupons SET current_uses = current_uses + 1 WHERE code = ?");
-            $couponStmt->execute([$couponCode]);
         }
 
         // --- Mark Abandoned Cart as Recovered ---
         $pdo->prepare("UPDATE abandoned_carts SET status = 'recovered', cart_data = '[]' WHERE user_id = ? AND status = 'active'")->execute([$userId]);
 
-        // --- Create In-App Notification for User ---
-        $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, 'order')")
-            ->execute([$userId, "Order Placed Successfully", "Your order ORD-{$orderId} has been received and is being processed."]);
-
-        // --- Create Admin Notification ---
-        $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) SELECT id, ?, ?, 'order' FROM users WHERE role IN ('admin', 'super')")
-            ->execute(["New Order Received", "Order ORD-{$orderId} has been placed by {$authenticatedUserName} for GH\xc2\xa2 {$totalAmount}."]);
+        // --- Notifications & Final Processing ---
+        if ($orderStatus === 'processing') {
+            completeOrder($orderId, $pdo);
+        }
 
         $pdo->commit();
 
-        logger('ok', 'ORDERS', "New order created: ORD-{$orderId} (Amt: GH\xc2\xa2 {$totalAmount}) by {$authenticatedUserName}");
+        logger('ok', 'ORDERS', "New order created: ORD-{$orderId} (Amt: GH\xc2\xa2 {$totalAmount}) by {$authenticatedUserName}. Fulfilling from: {$sourceBranchName} (Branch #{$sourceBranchId})");
 
-        // --- Send Order Confirmation Email ---
-        try {
-            require_once 'notifications.php';
-            $notifier = new NotificationService();
-
-            // Fetch user preferences
-            $userPrefStmt = $pdo->prepare("SELECT email, name, email_notif, sms_tracking, phone FROM users WHERE id = ?");
-            $userPrefStmt->execute([$userId]);
-            $orderUser = $userPrefStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($orderUser && $orderUser['email'] && ($orderUser['email_notif'] ?? true)) {
-                // Build itemized list
-                $itemsList = "";
-                foreach ($items as $item) {
-                    $itemName = $item['name'] ?? "Product #{$item['id']}";
-                    $itemQty = (int)$item['quantity'];
-                    $itemPrice = number_format((float)$item['price'], 2);
-                    $itemsList .= "  - {$itemName} (x{$itemQty}) — GHS {$itemPrice}\n";
-                }
-
-                $subject = "ElectroCom — Order Confirmed (ORD-{$orderId})";
-                $msg = "Hi {$orderUser['name']},\n\n"
-                    . "Thank you for your order! Here are your order details:\n\n"
-                    . "Order ID: ORD-{$orderId}\n"
-                    . "Delivery Code: {$deliveryOtp}\n"
-                    . "Date: " . date('d M Y, h:i A') . "\n"
-                    . "Payment: {$paymentMethod}\n\n"
-                    . "Items:\n{$itemsList}\n"
-                    . "Total: GHS " . number_format($totalAmount, 2) . "\n"
-                    . "Shipping To: {$shippingAddress}\n\n"
-                    . "IMPORTANT: Please provide the Delivery Code ({$deliveryOtp}) to the agent upon arrival to verify receipt.\n\n"
-                    . "We'll notify you when your order ships.\n\n"
-                    . "— The ElectroCom Team\n"
-                    . "support@electrocom.com";
-
-                $notifier->sendEmail($orderUser['email'], $subject, $msg);
-            }
-
-            // --- Send SMS Tracking if enabled ---
-            if ($orderUser && $orderUser['phone'] && ($orderUser['sms_tracking'] ?? true)) {
-                $smsMsg = "ElectroCom Order ORD-{$orderId}: Your order for GHS " . number_format($totalAmount, 2) . " has been received! Delivery Code: {$deliveryOtp}. Tracking: [URL]";
-                $notifier->sendSMS($orderUser['phone'], $smsMsg);
-            }
-        } catch (Exception $emailErr) {
-            // Don't fail the order if email fails
-            error_log("Order confirmation email failed: " . $emailErr->getMessage());
-        }
-
-        echo json_encode(['success' => true, 'order_id' => $orderId]);
     } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
+        if ($pdo && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
         error_log("Order creation error: " . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Order creation failed']);
+        echo json_encode(['success' => false, 'message' => 'Order creation failed: ' . $e->getMessage()]);
     }
 }

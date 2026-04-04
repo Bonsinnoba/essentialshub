@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Terminal, RefreshCw, Trash2, Download, Filter,
   AlertTriangle, Info, CheckCircle, XCircle, Search,
-  ChevronDown, Clock, Database, FileText, Plus
+  ChevronDown, Clock, Database, FileText, Plus, User
 } from 'lucide-react';
-import { fetchLogs, clearLogs, fetchBackups, createBackup, deleteBackup } from '../../services/api';
+import { fetchLogs, clearLogs, fetchBackups, createBackup, deleteBackup, API_BASE_URL } from '../../services/api';
+import { useConfirm } from '../../context/ConfirmContext';
 
 
 
@@ -15,12 +16,10 @@ const LEVEL_STYLE = {
   success: { bg: 'rgba(34,197,94,0.08)',   border: 'rgba(34,197,94,0.2)',    color: '#22c55e',  Icon: CheckCircle,   label: 'OK' },
 };
 
-function fmtTs(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+
 
 export default function SystemLogs() {
+  const { confirm } = useConfirm();
   const [tab, setTab]               = useState('logs');
   const [logs, setLogs]             = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -67,7 +66,7 @@ export default function SystemLogs() {
   }, [autoRefresh]);
 
   const clearAll = async () => {
-    if (!window.confirm("Are you sure you want to wipe ALL log entries?")) return;
+    if (!(await confirm("Are you sure you want to wipe ALL log entries?"))) return;
     setLogs([]);
     try {
       await clearLogs();
@@ -93,7 +92,7 @@ export default function SystemLogs() {
   };
 
   const handleDeleteBackup = async (file) => {
-    if (!window.confirm(`Delete backup ${file}?`)) return;
+    if (!(await confirm(`Delete backup ${file}?`))) return;
     try {
         const res = await deleteBackup(file);
         if (res.success) loadBackups();
@@ -116,7 +115,8 @@ export default function SystemLogs() {
       (l.msg?.toLowerCase().includes(q) || l.source?.toLowerCase().includes(q));
   });
 
-  const groupedLogs = filtered.reduce((acc, log) => {
+  const groupedLogs = (filtered || []).reduce((acc, log) => {
+    if (!log || !log.ts) return acc;
     const dateStr = new Date(log.ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     if (!acc[dateStr]) acc[dateStr] = [];
     acc[dateStr].push(log);
@@ -124,9 +124,9 @@ export default function SystemLogs() {
   }, {});
 
   const counts = { 
-    total: logs.length, 
-    error: logs.filter(l => l.level === 'error').length, 
-    warn: logs.filter(l => l.level === 'warn').length 
+    total: (logs || []).length, 
+    error: (logs || []).filter(l => l && l.level === 'error').length, 
+    warn: (logs || []).filter(l => l && l.level === 'warn').length 
   };
 
   return (
@@ -346,7 +346,7 @@ export default function SystemLogs() {
                             <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                     <a 
-                                      href={`http://electrocom.local/api/super_backup.php?action=download&file=${b.name}&token=${localStorage.getItem('ehub_token')}`}
+                                      href={`${API_BASE_URL}/super_backup.php?action=download&file=${b.name}&token=${localStorage.getItem('ehub_token')}`}
                                       target="_blank"
                                       rel="noreferrer"
                                       style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}

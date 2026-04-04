@@ -156,7 +156,7 @@ export default function Navbar({
                     <img src={product.image} alt="" className="result-thumb" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '10px' }} />
                     <div className="result-info">
                       <span className="result-name">{product.name}</span>
-                      <span className="result-meta">${product.price} • View Details</span>
+                      <span className="result-meta">GH₵{product.price} • View Details</span>
                     </div>
                     <ArrowRight size={14} className="result-arrow" />
                   </div>

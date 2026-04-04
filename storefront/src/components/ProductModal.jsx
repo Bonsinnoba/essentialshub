@@ -86,6 +86,8 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
     const cartProduct = {
       ...product,
       price: currentPrice.toString(),
+      original_price: basePrice + (selectedVariant ? parseFloat(selectedVariant.price_modifier) : 0),
+      discount_percent: discount,
       image: selectedVariant?.image_url || product.image,
       variant_sku: selectedVariant ? selectedVariant.sku : null,
       selected_attributes: selectedVariant ? selectedVariant.attributes : null
@@ -96,11 +98,21 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
     setTimeout(() => setIsAdding(false), 2000);
   };
 
-  const currentPrice = parseFloat(product.price) + (selectedVariant ? parseFloat(selectedVariant.price_modifier) : 0);
+  const discount = parseInt(product.discount_percent) || 0;
+  const isSaleActive = discount > 0 && (!product.sale_ends_at || new Date(product.sale_ends_at) > new Date());
+  
+  const basePrice = parseFloat(product.price);
+  const effectiveBasePrice = isSaleActive ? basePrice * (1 - discount / 100) : basePrice;
+  const currentPrice = effectiveBasePrice + (selectedVariant ? parseFloat(selectedVariant.price_modifier) : 0);
 
   const handleAddToWishlist = () => {
     setIsSaving(true);
-    onAddToWishlist(product);
+    onAddToWishlist({ 
+      ...product, 
+      price: currentPrice, 
+      original_price: basePrice + (selectedVariant ? parseFloat(selectedVariant.price_modifier) : 0),
+      discount_percent: discount 
+    });
     setTimeout(() => setIsSaving(false), 1000);
   };
 
@@ -321,8 +333,48 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
           <div className="product-modal-details" style={{ scrollBehavior: 'smooth' }}>
             <h2 className="product-title" style={{ fontSize: '32px', marginBottom: '4px' }}>{product.name}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '16px' }}>
-                <p className="product-price" style={{ fontSize: '28px', margin: 0 }}>{formatPrice(currentPrice)}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--warning-bg)', padding: '6px 14px', borderRadius: '100px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                    <p className="product-price" style={{ 
+                      fontSize: '32px', 
+                      margin: 0, 
+                      color: isSaleActive ? 'var(--success)' : 'inherit',
+                      fontWeight: 800
+                    }}>
+                      {formatPrice(currentPrice)}
+                    </p>
+                    {isSaleActive && (
+                      <p style={{ 
+                        fontSize: '18px', 
+                        margin: 0, 
+                        color: 'var(--text-muted)', 
+                        textDecoration: 'line-through',
+                        opacity: 0.6
+                      }}>
+                        {formatPrice(basePrice + (selectedVariant ? parseFloat(selectedVariant.price_modifier) : 0))}
+                      </p>
+                    )}
+                  </div>
+                  {isSaleActive && (
+                    <div style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      marginTop: '4px',
+                      color: 'var(--danger)',
+                      fontSize: '13px',
+                      fontWeight: 700
+                    }}>
+                      <Info size={14} /> Flash Sale: {discount}% OFF 
+                      {product.sale_ends_at && (
+                        <span style={{ fontWeight: 400, opacity: 0.8 }}>
+                          (Ends {new Date(product.sale_ends_at).toLocaleDateString()})
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--warning-bg)', padding: '6px 14px', borderRadius: '100px', alignSelf: 'flex-start', marginTop: '6px' }}>
                     <div style={{ display: 'flex', gap: '2px' }}>
                         {[1, 2, 3, 4, 5].map(s => (
                             <Star 
@@ -546,7 +598,20 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
                         </div>
                         <h4 style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 6px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>{rp.name}</h4>
                         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                           <p style={{ fontSize: '14px', fontWeight: 800, color: 'var(--primary-blue)', margin: 0 }}>{formatPrice(rp.price)}</p>
+                           <div style={{ display: 'flex', flexDirection: 'column' }}>
+                             <p style={{ fontSize: '14px', fontWeight: 800, color: 'var(--primary-blue)', margin: 0 }}>
+                               {formatPrice(
+                                 (parseInt(rp.discount_percent) > 0 && (!rp.sale_ends_at || new Date(rp.sale_ends_at) > new Date()))
+                                   ? rp.price * (1 - parseInt(rp.discount_percent) / 100)
+                                   : rp.price
+                               )}
+                             </p>
+                             {(parseInt(rp.discount_percent) > 0 && (!rp.sale_ends_at || new Date(rp.sale_ends_at) > new Date())) && (
+                               <span style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'line-through', opacity: 0.7 }}>
+                                 {formatPrice(rp.price)}
+                               </span>
+                             )}
+                           </div>
                            <button className="btn-icon" style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent-blue)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                <Plus size={14} />
                            </button>

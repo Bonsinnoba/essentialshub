@@ -112,6 +112,8 @@ export default function Favorites({ onProductClick, searchQuery }) {
                 price={p.price} 
                 image={p.image} 
                 rating={p.rating}
+                discount_percent={p.discount_percent}
+                sale_ends_at={p.sale_ends_at}
                 onClick={() => onProductClick(p)}
                 onRemove={() => toggleWishlist(p)}
               />

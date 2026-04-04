@@ -5,6 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Heart, X, AlertCircle, LogIn, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useSettings } from '../context/SettingsContext';
 
 
 export default function Cart() {
@@ -12,6 +13,7 @@ export default function Cart() {
   const { cartItems, removeFromCart, updateQuantity, subtotal, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToast } = useNotifications();
+  const { formatPrice } = useSettings();
   
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [couponInput, setCouponInput] = useState('');
@@ -113,7 +115,21 @@ export default function Cart() {
                           <Plus size={16} />
                         </button>
                       </div>
-                      <div className="item-total-price">${(parseFloat(item.price) * item.quantity).toFixed(2)}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <div className="item-total-price" style={{ color: item.discount_percent > 0 ? 'var(--success)' : 'inherit' }}>
+                          {formatPrice(parseFloat(item.price) * item.quantity)}
+                        </div>
+                        {item.discount_percent > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                              {formatPrice(parseFloat(item.original_price || item.price) * item.quantity)}
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: 800, background: 'var(--danger-bg)', color: 'var(--danger)', padding: '2px 6px', borderRadius: '4px' }}>
+                              -{item.discount_percent}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -128,11 +144,11 @@ export default function Cart() {
               <div className="summary-rows">
                 <div className="summary-row">
                   <span className="text-muted">Subtotal</span>
-                  <span className="font-bold">${subtotal.toFixed(2)}</span>
+                  <span className="font-bold">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="summary-row">
                   <span className="text-muted">Estimated Tax (10%)</span>
-                  <span className="font-bold">${tax.toFixed(2)}</span>
+                  <span className="font-bold">{formatPrice(tax)}</span>
                 </div>
                 <div className="summary-row">
                   <span className="text-muted">Shipping</span>
@@ -144,7 +160,7 @@ export default function Cart() {
                       <Tag size={14} />
                       <span>Discount ({appliedCoupon.code})</span>
                     </div>
-                    <span>-${discount.toFixed(2)}</span>
+                    <span>-{formatPrice(discount)}</span>
                   </div>
                 )}
                 
@@ -152,7 +168,7 @@ export default function Cart() {
                 
                 <div className="summary-total-row">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatPrice(total)}</span>
                 </div>
               </div>
 

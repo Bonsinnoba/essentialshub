@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { API_BASE_URL, formatImageUrl } from '../services/api';
 
 export default function POSInterface() {
   const { addToast } = useNotifications();
@@ -65,14 +65,16 @@ export default function POSInterface() {
   };
 
   const addToCart = (product) => {
-    if (product.stock_quantity <= 0) {
+    // In request mode, allow any item regardless of stock level
+    if (!isRequestMode && product.stock_quantity <= 0) {
       addToast(`${product.name} is out of stock!`, 'error');
       return;
     }
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock_quantity) {
+        // In request mode, no stock ceiling — request as many as needed
+        if (!isRequestMode && existing.quantity >= product.stock_quantity) {
           addToast('Limited availability', 'warning');
           return prev;
         }
@@ -86,7 +88,8 @@ export default function POSInterface() {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
         const newQty = Math.max(0, item.quantity + delta);
-        if (newQty > item.stock_quantity) {
+        // In request mode, no stock ceiling — can request more than current stock
+        if (!isRequestMode && newQty > item.stock_quantity) {
            addToast('Stock limit reached', 'warning');
            return item;
         }
@@ -227,25 +230,33 @@ export default function POSInterface() {
 
           {searchQuery && filteredProducts.length > 0 && (
             <div className="card glass animate-fade-in" style={{ position: 'absolute', width: '100%', marginTop: '80px', zIndex: 100, padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-               {filteredProducts.slice(0, 6).map(p => (
-                 <div 
-                   key={p.id} 
-                   onClick={() => { addToCart(p); setSearchQuery(''); }}
-                   style={{ padding: '12px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                   className="hover-bg"
-                 >
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', background: 'var(--bg-surface-secondary)', borderRadius: '6px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                         {p.image_url ? <img src={p.image_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={20} opacity={0.3} />}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '14px' }}>{p.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Code: {p.product_code || '---'} | Stock: {p.stock_quantity}</div>
-                      </div>
+               {filteredProducts.slice(0, 6).map(p => {
+                 const isOutOfStock = p.stock_quantity <= 0;
+                 return (
+                   <div 
+                     key={p.id} 
+                     onClick={() => { addToCart(p); setSearchQuery(''); }}
+                     style={{ padding: '12px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: (!isRequestMode && isOutOfStock) ? 0.4 : 1 }}
+                     className="hover-bg"
+                   >
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', background: 'var(--bg-surface-secondary)', borderRadius: '6px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                           {p.image_url ? <img src={formatImageUrl(p.image_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={20} opacity={0.3} />}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '14px' }}>{p.name}</div>
+                          <div style={{ fontSize: '11px', color: isRequestMode && isOutOfStock ? 'var(--warning)' : 'var(--text-muted)' }}>
+                            Code: {p.product_code || '---'} | {isRequestMode && isOutOfStock ? '⚠ Out of stock — request to restock' : `Stock: ${p.stock_quantity}`}
+                          </div>
+                        </div>
+                     </div>
+                     {isRequestMode
+                       ? <div style={{ fontSize: '10px', fontWeight: 900, padding: '2px 8px', borderRadius: '6px', background: 'var(--bg-surface-secondary)', color: 'var(--warning)', textTransform: 'uppercase' }}>REQUEST</div>
+                       : <div style={{ fontWeight: 800, color: 'var(--primary-blue)' }}>GH₵ {p.price}</div>
+                     }
                    </div>
-                   <div style={{ fontWeight: 800, color: 'var(--primary-blue)' }}>GHS {p.price}</div>
-                 </div>
-               ))}
+                 );
+               })}
             </div>
           )}
 
@@ -284,7 +295,7 @@ export default function POSInterface() {
                         <div style={{ fontWeight: 700, fontSize: '14px' }}>{item.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.product_code || 'No Code'}</div>
                       </td>
-                      <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: 600 }}>GHS {item.price}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: 600 }}>GH₵ {item.price}</td>
                       <td style={{ padding: '16px 24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface-secondary)', borderRadius: '8px', padding: '4px', width: 'fit-content' }}>
                           <button className="btn" style={{ padding: '2px 8px', minWidth: 'unset', height: '28px', background: 'var(--bg-surface)' }} onClick={() => updateQuantity(item.id, -1)}>-</button>
@@ -294,7 +305,7 @@ export default function POSInterface() {
                       </td>
                       {!isRequestMode && (
                         <td style={{ padding: '16px 24px', textAlign: 'right', fontWeight: 800, fontSize: '15px' }}>
-                          GHS {(item.price * item.quantity).toLocaleString()}
+                          GH₵ {(item.price * item.quantity).toLocaleString()}
                         </td>
                       )}
                       <td style={{ padding: '16px 24px' }}>
@@ -323,7 +334,7 @@ export default function POSInterface() {
                     <div style={{ marginTop: '12px', padding: '16px 0', borderTop: '2px dashed var(--border-light)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                         <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Subtotal Due</span>
-                        <span style={{ fontSize: '32px', fontWeight: 950, color: 'var(--primary-blue)', lineHeight: 1 }}>GHS {total.toLocaleString()}</span>
+                        <span style={{ fontSize: '32px', fontWeight: 950, color: 'var(--primary-blue)', lineHeight: 1 }}>GH₵ {total.toLocaleString()}</span>
                       </div>
                     </div>
                   )}

@@ -56,7 +56,7 @@ export default function AbandonedCartManager() {
             <span style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600 }}>Potential Revenue</span>
             <DollarSign size={20} style={{ color: 'var(--success)' }} />
           </div>
-          <h2 style={{ fontSize: '28px', fontWeight: 800 }}>GH¢ {carts.filter(c => c.status === 'abandoned').reduce((acc, c) => acc + c.total_value, 0).toFixed(2)}</h2>
+          <h2 style={{ fontSize: '28px', fontWeight: 800 }}>GH₵ {carts.filter(c => c.status === 'abandoned').reduce((acc, c) => acc + c.total_value, 0).toFixed(2)}</h2>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>Estimated value of abandoned items</p>
         </div>
         <div className="card glass" style={{ padding: '24px' }}>
@@ -100,7 +100,7 @@ export default function AbandonedCartManager() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '16px 24px', fontWeight: 700 }}>GH¢ {c.total_value.toFixed(2)}</td>
+                      <td style={{ padding: '16px 24px', fontWeight: 700 }}>GH₵ {c.total_value.toFixed(2)}</td>
                       <td style={{ padding: '16px 24px' }}>
                         <span style={{ 
                           padding: '4px 10px', 
@@ -155,7 +155,7 @@ export default function AbandonedCartManager() {
                                   </div>
                                   <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.quantity} x GH¢ {item.price}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.quantity} x GH₵ {item.price}</div>
                                   </div>
                                 </div>
                               ))}

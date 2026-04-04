@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Check, X, FileText, Globe, EyeOff, Save } from 'lucide-react';
 import { fetchCMSPages, saveCMSPage, deleteCMSPage, getCMSPage } from '../services/api';
+import { useConfirm } from '../context/ConfirmContext';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Add css for snow theme
 
 export default function CMSManager() {
+  const { confirm } = useConfirm();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,7 +81,7 @@ export default function CMSManager() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this page? This cannot be undone.")) return;
+    if (!(await confirm("Are you sure you want to delete this page? This cannot be undone."))) return;
     try {
       const res = await deleteCMSPage(id);
       if (res.success) {

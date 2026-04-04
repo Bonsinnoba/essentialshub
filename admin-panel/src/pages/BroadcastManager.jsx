@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Send, Users, Mail, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
 import { sendBroadcast } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function BroadcastManager() {
     const { addToast } = useNotifications();
+    const { confirm } = useConfirm();
     const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState(null);
     const [formData, setFormData] = useState({
@@ -18,7 +20,7 @@ export default function BroadcastManager() {
         e.preventDefault();
         if (!formData.message) return alert('Message is required');
         
-        if (!window.confirm(`Are you sure you want to send this broadcast to ${formData.target} customers? This action cannot be undone.`)) return;
+        if (!(await confirm(`Are you sure you want to send this broadcast to ${formData.target} customers? This action cannot be undone.`))) return;
 
         setLoading(true);
         setStats(null);

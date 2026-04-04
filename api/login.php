@@ -23,7 +23,7 @@ if (empty($email) || empty($password)) {
 
 try {
     // Fetch user by email
-    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method, email_notif, push_notif, sms_tracking, theme FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password_hash, phone, address, region, level, level_name, avatar_text, profile_image, status, role, is_verified, verification_method, email_notif, push_notif, sms_tracking, theme, branch_id, login_attempts, lockout_until FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
@@ -138,12 +138,14 @@ try {
                 'email' => $user['email'],
                 'phone' => $user['phone'],
                 'address' => $user['address'],
+                'region' => $user['region'] ?? 'Greater Accra',
                 'level' => $user['level'],
                 'levelName' => $user['level_name'],
                 'avatar' => $user['avatar_text'],
                 'profileImage' => (strlen($user['profile_image'] ?? '') > 50000) ? null : $user['profile_image'],
-                'role' => $user['role'],
-                'email_notif' => (bool)($user['email_notif'] ?? true),
+                'role'             => $user['role'],
+                'branch_id'        => $user['branch_id'] ?? null,
+                'email_notif'      => (bool)($user['email_notif'] ?? true),
                 'push_notif' => (bool)($user['push_notif'] ?? true),
                 'sms_tracking' => (bool)($user['sms_tracking'] ?? true),
                 'two_factor_enabled' => (bool)($user['two_factor_enabled'] ?? false),

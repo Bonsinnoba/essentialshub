@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Search, Filter, X, Upload, Save, CheckCircle, Image as ImageIcon, Loader, Star, Download, UploadCloud, ShieldAlert } from 'lucide-react';
 import Papa from 'papaparse';
-import { fetchProducts, createProduct, updateProduct, deleteProduct, fetchStoreData } from '../services/api';
+import { fetchProducts, createProduct, updateProduct, deleteProduct, fetchStoreData, formatImageUrl } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { formatPrice } from '../utils/formatPrice';
 
 
 const colorsToString = (colors) => Array.isArray(colors) ? colors.join(', ') : '';
@@ -28,6 +30,7 @@ const stringToSpecs = (str) => {
 
 export default function ProductManager() {
   const { addToast } = useNotifications();
+  const { confirm } = useConfirm();
   const [products, setProducts] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,9 @@ export default function ProductManager() {
     product_code: '',
     location: '',
     gallery: ['', '', '', ''],
-    variants: []
+    variants: [],
+    discount_percent: 0,
+    sale_ends_at: ''
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
@@ -67,12 +72,7 @@ export default function ProductManager() {
     );
   }
 
-  const formatURL = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    const API_BASE = 'http://electrocom.local/api/';
-    return `${API_BASE}${url.startsWith('/') ? url.slice(1) : url}`;
-  };
+
 
   const loadProducts = async () => {
     setLoading(true);
@@ -83,7 +83,7 @@ export default function ProductManager() {
         return {
             ...p,
             stock: stock,
-            image: formatURL(p.image_url || p.image),
+            image: formatImageUrl(p.image_url || p.image),
             status: stock <= 0 ? 'Out of Stock' : (stock < 10 ? 'Low Stock' : 'In Stock')
         };
     });
@@ -95,7 +95,7 @@ export default function ProductManager() {
     if (product) {
       setEditingProduct(product);
       const galleryData = Array.isArray(product.gallery) 
-        ? [...product.gallery.map(img => formatURL(img)), '', '', '', ''].slice(0, 4) 
+        ? [...product.gallery.map(img => formatImageUrl(img)), '', '', '', ''].slice(0, 4) 
         : ['', '', '', ''];
 
       setFormData({
@@ -104,7 +104,7 @@ export default function ProductManager() {
         price: product.price,
         stock: product.stock,
         description: product.description || '',
-        image: formatURL(product.image) || '',
+        image: product.image || '',
         colors: colorsToString(product.colors),
         specs: specsToString(product.specs),
         included: includedToString(product.included),
@@ -112,7 +112,11 @@ export default function ProductManager() {
         product_code: product.product_code || '',
         location: product.location || '',
         gallery: galleryData,
-        variants: product.variants || []
+        variants: product.variants || [],
+        discount_percent: product.discount_percent ? parseInt(product.discount_percent) : 0,
+        sale_ends_at: (product.sale_ends_at && product.sale_ends_at !== '0000-00-00 00:00:00') 
+            ? String(product.sale_ends_at).substring(0, 16).replace(' ', 'T') 
+            : ''
       });
     } else {
       setEditingProduct(null);
@@ -123,7 +127,9 @@ export default function ProductManager() {
         product_code: '',
         location: '',
         gallery: ['', '', '', ''],
-        variants: []
+        variants: [],
+        discount_percent: 0,
+        sale_ends_at: ''
       });
     }
     setShowModal(true);
@@ -191,7 +197,7 @@ export default function ProductManager() {
     e.preventDefault();
 
     if (!formData.location || formData.location.trim() === '') {
-        const confirmSave = window.confirm("Location is missing. Are you sure you want to save without a location?");
+        const confirmSave = await confirm("Location is missing. Are you sure you want to save without a location?");
         if (!confirmSave) return;
     }
 
@@ -204,14 +210,20 @@ export default function ProductManager() {
         included: JSON.stringify(stringToIncluded(formData.included)),
         specs: JSON.stringify(stringToSpecs(formData.specs)),
         gallery: formData.gallery.filter(img => img !== ''),
-        variants: formData.variants
+        variants: formData.variants,
+        discount_percent: parseInt(formData.discount_percent) || 0,
+        sale_ends_at: formData.sale_ends_at || null
     };
+
+    console.log("Saving Product - ID:", editingProduct?.id, "Payload:", apiData);
 
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, apiData);
+        const res = await updateProduct(editingProduct.id, apiData);
+        if (!res.success) throw new Error(res.error || res.message || 'Failed to update product');
       } else {
-        await createProduct(apiData);
+        const res = await createProduct(apiData);
+        if (!res.success) throw new Error(res.error || res.message || 'Failed to create product');
       }
       addToast(editingProduct ? 'Product updated successfully' : 'Product created successfully', 'success');
       handleCloseModal();
@@ -225,7 +237,7 @@ export default function ProductManager() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+    if (await confirm('Are you sure you want to delete this product?')) {
       try {
         await deleteProduct(id);
         loadProducts();
@@ -257,7 +269,9 @@ export default function ProductManager() {
       Rating: p.rating || 5,
       Description: p.description || '',
       Colors: colorsToString(p.colors),
-      Included: includedToString(p.included)
+      Included: includedToString(p.included),
+      DiscountPercent: p.discount_percent || 0,
+      SaleEndsAt: p.sale_ends_at || ''
     }));
     
     const csv = Papa.unparse(dataToExport);
@@ -306,6 +320,8 @@ export default function ProductManager() {
                 colors: row.Colors !== undefined ? JSON.stringify(stringToColors(row.Colors)) : (existingProduct ? JSON.stringify(existingProduct.colors || []) : '[]'),
                 specs: existingProduct ? JSON.stringify(existingProduct.specs || {}) : '{}',
                 included: row.Included !== undefined ? JSON.stringify(stringToIncluded(row.Included)) : (existingProduct ? JSON.stringify(existingProduct.included || []) : '[]'),
+                discount_percent: row.DiscountPercent !== undefined ? parseInt(row.DiscountPercent) : (existingProduct ? existingProduct.discount_percent : 0),
+                sale_ends_at: row.SaleEndsAt !== undefined ? row.SaleEndsAt : (existingProduct ? existingProduct.sale_ends_at : ''),
                 directions: existingProduct ? (existingProduct.directions || '') : '',
                 gallery: existingProduct ? (existingProduct.gallery || []) : []
               };
@@ -535,12 +551,41 @@ export default function ProductManager() {
                         <span style={{ fontWeight: 600 }}>{p.name}</span>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
                           {p.product_code && <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 700 }}>{p.product_code}</span>}
+                          {p.discount_percent > 0 && (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              color: 'white', 
+                              background: 'var(--danger)', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              fontWeight: 800,
+                              textTransform: 'uppercase'
+                            }}>
+                              -{p.discount_percent}% OFF
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{p.category}</td>
-                  <td style={{ padding: '16px 24px', fontWeight: 700 }}>${p.price}</td>
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ 
+                        fontWeight: 700, 
+                        color: p.discount_percent > 0 ? 'var(--success)' : 'inherit' 
+                      }}>
+                        {formatPrice(p.discount_percent > 0 
+                          ? (p.price * (1 - p.discount_percent / 100))
+                          : p.price)}
+                      </span>
+                      {p.discount_percent > 0 && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatPrice(p.price)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ padding: '16px 24px' }}>{p.stock}</td>
                   <td style={{ padding: '16px 24px' }}>
                     {p.location ? (
@@ -695,7 +740,7 @@ export default function ProductManager() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>Price ($)</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>Price (GH₵)</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -782,6 +827,53 @@ export default function ProductManager() {
                     style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-surface-secondary)', color: 'var(--text-main)', outline: 'none' }}
                     placeholder="Unit, Charger, Manual..."
                   />
+                </div>
+              </div>
+
+              <div style={{ padding: '20px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger)', marginBottom: '16px' }}>
+                  <ImageIcon size={16} /> FLASH SALE CONFIGURATION
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>Discount Percent (%)</label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="99"
+                      value={formData.discount_percent}
+                      onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })}
+                      style={{ 
+                        width: '100%', 
+                        padding: '12px 14px', 
+                        borderRadius: '8px', 
+                        border: '2px solid var(--border-light)', 
+                        background: 'var(--bg-surface-secondary) !important', 
+                        color: 'var(--text-main) !important', 
+                        outline: 'none',
+                        fontWeight: '600'
+                      }}
+                      placeholder="e.g. 20"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>Sale End Date & Time</label>
+                    <input 
+                      type="datetime-local" 
+                      value={formData.sale_ends_at}
+                      onChange={(e) => setFormData({ ...formData, sale_ends_at: e.target.value })}
+                      style={{ 
+                        width: '100%', 
+                        padding: '12px 14px', 
+                        borderRadius: '8px', 
+                        border: '2px solid var(--border-light)', 
+                        background: 'var(--bg-surface-secondary) !important', 
+                        color: 'var(--text-main) !important', 
+                        outline: 'none',
+                        fontWeight: '600'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1006,7 +1098,7 @@ export default function ProductManager() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                           <div>
-                            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Price Modifier ($)</label>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Price (GH₵) *</label>
                             <input type="number" step="0.01" value={v.price_modifier} onChange={e => {
                                 const newV = [...formData.variants];
                                 newV[idx].price_modifier = parseFloat(e.target.value) || 0;

@@ -108,7 +108,7 @@ export default function FilterPanel({ filters, setFilters, onReset, isMobile, on
               fontWeight: 800,
               fontSize: isMobile ? '16px' : '14px',
               pointerEvents: 'none'
-            }}>$</span>
+            }}>GH₵</span>
             <input 
               type="number"
               min="0"
@@ -166,8 +166,8 @@ export default function FilterPanel({ filters, setFilters, onReset, isMobile, on
             className="filter-range-slider"
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
-            <span>$0</span>
-            <span>${maxRange}</span>
+            <span>GH₵0</span>
+            <span>GH₵{maxRange}</span>
           </div>
         </div>
       </div>

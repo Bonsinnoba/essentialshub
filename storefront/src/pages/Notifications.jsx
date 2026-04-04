@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Bell, Clock, Trash2, Check, CheckCircle, Mail, ShieldCheck, Filter } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { formatRelativeTime } from '../utils/dateFormatter';
 
 const NotificationIcon = ({ type }) => {
@@ -15,6 +16,7 @@ const NotificationIcon = ({ type }) => {
 
 export default function Notifications({ searchQuery }) {
   const { notifications, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, unreadCount } = useNotifications();
+  const { confirm } = useConfirm();
   const [filter, setFilter] = useState('all');
 
   const filters = [
@@ -157,8 +159,8 @@ export default function Notifications({ searchQuery }) {
           </button>
           <button 
             className="btn-secondary" 
-            onClick={() => {
-              if (window.confirm('Are you sure you want to delete all notifications?')) {
+            onClick={async () => {
+              if (await confirm('Are you sure you want to delete all notifications?')) {
                 clearAllNotifications();
               }
             }}

@@ -88,19 +88,18 @@ export const SettingsProvider = ({ children }) => {
   };
 
   const updateCurrency = (currency) => {
-    const symbols = { 'GHS': 'GH₵', 'USD': '$', 'EUR': '€', 'GBP': '£' };
-    const rates = { 'GHS': 1, 'USD': 0.083, 'EUR': 0.077, 'GBP': 0.065 }; // Simple mock rates
+    // Only GHS is supported now
     setSettings(prev => ({
       ...prev,
-      currency,
-      currencySymbol: symbols[currency] || '$',
-      currencyRate: rates[currency] || 1
+      currency: 'GHS',
+      currencySymbol: 'GH₵',
+      currencyRate: 1
     }));
   };
 
   const formatPrice = (price) => {
-    const converted = (price * settings.currencyRate).toFixed(2);
-    return `${settings.currencySymbol}${converted}`;
+    const amount = Number(price) || 0;
+    return `GH₵${amount.toFixed(2)}`;
   };
 
   return (

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAdminSlides, createSlide, updateSlide, deleteSlide } from '../services/api';
+import { fetchAdminSlides, createSlide, updateSlide, deleteSlide, formatImageUrl } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Upload } from 'lucide-react';
 
 export default function SliderManager() {
   const { addToast } = useNotifications();
+  const { confirm } = useConfirm();
   const [slides, setSlides] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ export default function SliderManager() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this slide?')) {
+    if (await confirm('Are you sure you want to delete this slide?')) {
       try {
         await deleteSlide(id);
         loadSlides();
@@ -193,7 +195,7 @@ export default function SliderManager() {
           {slides.map(slide => (
             <div key={slide.id} className="card glass" style={{ overflow: 'hidden', padding: 0, position: 'relative' }}>
                <div style={{ height: '180px', overflow: 'hidden', position: 'relative' }}>
-                  <img src={slide.image_url} alt={slide.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={formatImageUrl(slide.image_url)} alt={slide.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>
                     Order: {slide.display_order}
                   </div>
@@ -247,7 +249,7 @@ export default function SliderManager() {
                   }}>
                     {formData.image_url ? (
                         <>
-                            <img src={formData.image_url} alt="Preview" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.3 }} />
+                            <img src={formatImageUrl(formData.image_url)} alt="Preview" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.3 }} />
                             <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.6)', padding: '8px 16px', borderRadius: '20px', color: 'white', fontWeight: 600 }}>
                                 <Upload size={18} /> Change Image
                             </div>

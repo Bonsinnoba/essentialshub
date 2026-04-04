@@ -9,6 +9,7 @@ import SliderManager from './pages/SliderManager';
 import StoreLayout from './pages/StoreLayout';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import { API_BASE_URL } from './services/api';
 import CouponManager from './pages/CouponManager';
 import SystemNotifications from './pages/SystemNotifications';
 import ReviewManager from './pages/ReviewManager';
@@ -27,11 +28,12 @@ import GlobalSettings from './pages/super-user/GlobalSettings';
 import TrafficControl from './pages/super-user/TrafficControl';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { X } from 'lucide-react';
 
 // ─── Toast Overlay ────────────────────────────────────────────────────────────
 const AdminToasts = () => {
-  const { notifications, deleteNotification, toasts, removeToast } = useNotifications();
+  const { notifications, markAsRead, toasts, removeToast } = useNotifications();
   
   return (
     <div style={{
@@ -67,7 +69,7 @@ const AdminToasts = () => {
         }}>
           <div style={{ flex: 1, fontWeight: 700, fontSize: '14px' }}>{notif.text}</div>
           <button 
-            onClick={() => deleteNotification(notif.id)}
+            onClick={() => markAsRead(notif.id)}
             style={{ 
               background: 'transparent', 
               border: 'none', 
@@ -134,7 +136,7 @@ const ProtectedLayout = ({ children, requireSuper = false }) => {
     if (!isAuthenticated) return;
     const check = async () => {
       try {
-        const res = await fetch('http://localhost:8000/super_settings.php', {
+        const res = await fetch(`${API_BASE_URL}/super_settings.php`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ehub_token')}` }
         });
         if (res.status === 401 || res.status === 403) {
@@ -314,8 +316,10 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <AdminToasts />
-        <AppContent />
+        <ConfirmProvider>
+          <AdminToasts />
+          <AppContent />
+        </ConfirmProvider>
       </NotificationProvider>
     </AuthProvider>
   );

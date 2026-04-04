@@ -44,6 +44,15 @@ try {
         // Include traffic monitor now that $pdo is ready
         if (file_exists('traffic_monitor.php')) {
             require_once 'traffic_monitor.php';
+            if (function_exists('monitorTraffic')) {
+                monitorTraffic();
+            }
+        }
+
+        // --- Centralized Migrations ---
+        if ($config['DB_AUTO_REPAIR'] ?? false) {
+            require_once 'migrations.php';
+            runMigrations($pdo);
         }
     }
 } catch (\Throwable $e) {
@@ -105,6 +114,17 @@ if (!function_exists('sendResponse')) {
  */
 if (!function_exists('logApp')) {
     function logApp($level, $source, $message) {
+        $level = strtolower($level);
+        // Only log info messages if debug mode is on
+        if ($level === 'info' && function_exists('isDebugEnabled') && !isDebugEnabled()) {
+            return;
+        }
+
+        if (function_exists('logger')) {
+            logger($level, $source, $message);
+            return;
+        }
+
         $file = __DIR__ . '/logs/app.log';
         if (!is_dir(__DIR__ . '/logs')) mkdir(__DIR__ . '/logs', 0755, true);
         $ts = date('Y-m-d H:i:s');
@@ -131,4 +151,30 @@ if (!function_exists('generateInitials')) {
         return strtoupper(mb_substr($name, 0, 2));
     }
 }
+/**
+ * Helper to normalize local paths by stripping domain/base URLs.
+ */
+if (!function_exists('normalizeLocalPath')) {
+    function normalizeLocalPath($path)
+    {
+        if (empty($path)) return '';
+        if (strpos($path, 'data:image') === 0) return $path;
 
+        $bases = $GLOBALS['config']['ALLOWED_IMAGE_BASES'] ?? [
+            'http://localhost:8000/api/',
+            'http://localhost:8000/',
+            'http://127.0.0.1:8000/api/',
+            'http://127.0.0.1:8000/',
+            'http://electrocom.local/api/',
+            'http://electrocom.local/',
+            'https://electrocom.local/api/',
+            'https://electrocom.local/'
+        ];
+        foreach ($bases as $base) {
+            if (strpos($path, $base) === 0) {
+                return str_replace($base, '', $path);
+            }
+        }
+        return $path;
+    }
+}

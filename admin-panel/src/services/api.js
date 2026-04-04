@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
  * Helper to decode HTML entities like &gt; to >
@@ -16,7 +16,20 @@ const decodeHtml = (html) => {
 export const formatImageUrl = (url) => {
     if (!url) return url;
     // Fix hardcoded dev URLs from DB
-    url = url.replace('http://electrocom.local/api/', '');
+    const cleaningBases = [
+        'http://localhost:8000/api/',
+        'http://localhost:8000/',
+        'http://127.0.0.1:8000/api/',
+        'http://127.0.0.1:8000/',
+        'http://electrocom.local/api/',
+        'http://electrocom.local/',
+        'https://electrocom.local/api/',
+        'https://electrocom.local/'
+    ];
+    cleaningBases.forEach(base => {
+        url = url.replace(base, '');
+    });
+    
     if (url.startsWith('http')) return url;
     return `${API_BASE_URL}/${url.startsWith('/') ? url.slice(1) : url}`;
 };
@@ -138,7 +151,10 @@ export const fetchCustomers = async () => {
     }
 };
 
-export const deleteUser = async (id) => authFetch(`/admin_users.php?id=${id}`, { method: 'DELETE' });
+export const deleteUser = async (id) => authFetch('/admin_customers.php', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete', id })
+});
 export const fetchAnalytics = async () => authFetch('/admin_analytics.php');
 
 // --- CMS ---
@@ -147,25 +163,8 @@ export const getCMSPage = async (slug) => authFetch(`/cms.php?slug=${slug}`);
 export const saveCMSPage = async (pageData) => authFetch('/cms.php', { method: 'POST', body: JSON.stringify(pageData) });
 export const deleteCMSPage = async (id) => authFetch(`/cms.php?id=${id}`, { method: 'DELETE' });
 
-export const deleteCustomer = async (id) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin_customers.php`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ action: 'delete', id }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || result.error || 'Failed to delete customer');
-        }
-        return result;
-    } catch (error) {
-        console.error('Error deleting customer:', error);
-        throw error;
-    }
-
-};
+// deleteCustomer is kept as a backward-compat alias for deleteUser
+export const deleteCustomer = deleteUser;
 
 
 

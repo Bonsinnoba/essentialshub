@@ -306,9 +306,8 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
                   onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))}
                   className="input-premium"
                   style={{ padding: '8px 12px', fontSize: '13px', width: '200px' }}
-                  disabled={!!user?.phone}
                 />
-              ) : (user?.phone ? <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>PERMANENT</span> : null)} 
+              ) : null} 
             />
             <SettingRow 
               icon={MapPin} title="Shipping Address" 
@@ -368,28 +367,6 @@ export default function Settings({ searchQuery, isDarkMode, toggleDarkMode, them
             icon={History} title="Transaction History" description="View all previous payments"
             onClick={() => navigate('/transactions')}
             action={<ChevronRight size={18} color="var(--text-muted)" />} 
-          />
-          <SettingRow 
-            icon={DollarSign} title="Currency" description={settings.currency}
-            action={
-              <select 
-                value={settings.currency}
-                onChange={(e) => {
-                  updateCurrency(e.target.value);
-                  addToast(`Currency switched to ${e.target.value}`, 'info');
-                }}
-                style={{
-                  padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border-light)',
-                  background: 'var(--bg-main)', color: 'var(--text-main)', fontWeight: 600,
-                  fontSize: '13px', cursor: 'pointer', outline: 'none'
-                }}
-              >
-                <option value="GHS">GHS (GH₵)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-              </select>
-            } 
           />
         </SettingCard>
       )}

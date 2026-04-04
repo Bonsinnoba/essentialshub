@@ -56,7 +56,7 @@ if (!function_exists('saveBase64Image')) {
     function saveBase64Image($base64String)
     {
         if (!$base64String || strpos($base64String, 'data:image') === false) {
-            return $base64String;
+            return normalizeLocalPath($base64String);
         }
 
         $dir = 'uploads/slider/';

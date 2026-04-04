@@ -7,22 +7,20 @@ require_once 'security.php';
 require_once 'db.php';
 require_once 'notifications.php';
 
-// Only admins and staff allowed
-$userId = authenticate();
-$action = $_GET['action'] ?? '';
-if (function_exists('logApp')) logApp('info', 'CHAT_API', "Method: " . $_SERVER['REQUEST_METHOD'] . " UserID: $userId Action: $action");
+// Authenticate staff only
+try {
+    $userId = requireRole(RBAC_STAFF_GROUP, $pdo);
+} catch (Exception $e) {
+    sendResponse(false, 'Unauthorized: Staff access required.', null, 401);
+}
 
+// Fetch user data for chat context
 $stmt = $pdo->prepare("SELECT id, name, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (function_exists('logApp')) logApp('info', 'CHAT_API', "User role: " . ($user['role'] ?? 'NONE'));
-
-// Check if user is staff (not a customer)
-if (!$user || $user['role'] === 'customer') {
-    http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only staff and admin accounts can access the Hub. Your role: ' . ($user['role'] ?? 'None')]);
-    exit;
+if (!$user) {
+    sendResponse(false, 'User record mismatch.', null, 401);
 }
 
 $action = $_GET['action'] ?? '';

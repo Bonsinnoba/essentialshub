@@ -29,6 +29,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     email: '',
     phone: '',
     country: 'Ghana',
+    region: 'Greater Accra',
     password: '',
     confirmPassword: '',
     verification_method: 'email'
@@ -43,7 +44,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordMethod, setForgotPasswordMethod] = useState('email'); // 'email' or 'sms'
   const [forgotPasswordStatus, setForgotPasswordStatus] = useState({ type: '', message: '' });
-  const [resetOtpStep, setResetOtpStep] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP, 3: Passwords
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [resetOtp, setResetOtp] = useState('');
   const [newResetPassword, setNewResetPassword] = useState('');
   const [confirmResetPassword, setConfirmResetPassword] = useState('');
@@ -136,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
   };
 
   const handleForgotPassword = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!forgotPasswordEmail) return;
     setLoading(true);
     setForgotPasswordStatus({ type: '', message: '' });
@@ -144,7 +146,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
         const response = await forgotPassword(forgotPasswordEmail, forgotPasswordMethod);
         if (response.success) {
             setForgotPasswordStatus({ type: 'success', message: response.message });
-            setResetOtpStep(true);
+            setResetStep(2);
+            setResendCooldown(60);
         } else {
             setForgotPasswordStatus({ type: 'error', message: response.message || 'Failed to send reset code.' });
         }
@@ -155,8 +158,29 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
     }
   };
 
+  // Timer for resend cooldown
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const handleResetPasswordSubmit = async (e) => {
     e.preventDefault();
+    if (resetStep === 2) {
+      if (!resetOtp || resetOtp.length < 6) {
+        setForgotPasswordStatus({ type: 'error', message: "Please enter the 6-digit code." });
+        return;
+      }
+      setResetStep(3);
+      setForgotPasswordStatus({ type: '', message: '' });
+      return;
+    }
+
     if (!resetOtp || !newResetPassword || newResetPassword !== confirmResetPassword) {
       if (newResetPassword !== confirmResetPassword) setForgotPasswordStatus({ type: 'error', message: "Passwords do not match." });
       return;
@@ -169,7 +193,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
         setForgotPasswordStatus({ type: 'success', message: response.message });
         setTimeout(() => {
            setIsForgotPassword(false);
-           setResetOtpStep(false);
+           setResetStep(1);
            setResetOtp('');
            setNewResetPassword('');
            setConfirmResetPassword('');
@@ -310,6 +334,36 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                           <input type="text" name="country" value={formData.country} onChange={handleChange} placeholder="Country" required />
                         </div>
                       </div>
+                      <div className="form-group" style={{ marginBottom: '15px' }}>
+                        <label><MapPin size={14} /> Delivery Region</label>
+                        <div className="input-wrapper">
+                          <select 
+                            name="region" 
+                            value={formData.region} 
+                            onChange={handleChange} 
+                            required 
+                            className="input-field" 
+                            style={{ 
+                                width: '100%', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                color: 'var(--text-main)',
+                                padding: '12px 14px',
+                                outline: 'none'
+                             }}
+                          >
+                            <option value="Greater Accra">Greater Accra</option>
+                            <option value="Ashanti">Ashanti (Kumasi)</option>
+                            <option value="Upper West">Upper West (Wa)</option>
+                            <option value="Western">Western</option>
+                            <option value="Central">Central</option>
+                            <option value="Eastern">Eastern</option>
+                            <option value="Volta">Volta</option>
+                            <option value="Northern">Northern</option>
+                            <option value="Upper East">Upper East</option>
+                          </select>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                         <button type="button" className="btn-secondary" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
                         <button type="button" className="btn-primary" onClick={handleNextStep} style={{ flex: 2 }}>Next Step</button>
@@ -402,126 +456,171 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
               justifyContent: 'center',
               padding: '10px 0'
             }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <h1 style={{ marginBottom: '8px' }}>Reset Password</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Enter your email to receive a password reset link.</p>
-              </div>
+              {resetStep === 1 && (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <h1 style={{ marginBottom: '8px' }}>Reset Password</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Enter your email to receive a password reset link.</p>
+                  </div>
 
-              {forgotPasswordStatus.message && (
-                <div style={{
-                  padding: '12px',
-                  borderRadius: '12px',
-                  marginBottom: '20px',
-                  fontSize: '13px',
-                  background: forgotPasswordStatus.type === 'success' ? 'var(--success-bg)' : 'var(--error-bg)',
-                  color: forgotPasswordStatus.type === 'success' ? 'var(--success)' : 'var(--error)',
-                  border: '1px solid currentColor',
-                  textAlign: 'center'
-                }}>
-                  {forgotPasswordStatus.message}
-                </div>
+                  <div className="reset-method-selection" style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '20px',
+                    background: 'var(--bg-surface-secondary)',
+                    padding: '4px',
+                    borderRadius: '12px'
+                  }}>
+                    <button 
+                      type="button" 
+                      onClick={() => setForgotPasswordMethod('email')}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        background: forgotPasswordMethod === 'email' ? 'var(--bg-card)' : 'transparent',
+                        color: forgotPasswordMethod === 'email' ? 'var(--primary-blue)' : 'var(--text-muted)',
+                        boxShadow: forgotPasswordMethod === 'email' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      Email
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setForgotPasswordMethod('sms')}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        background: forgotPasswordMethod === 'sms' ? 'var(--bg-card)' : 'transparent',
+                        color: forgotPasswordMethod === 'sms' ? 'var(--primary-blue)' : 'var(--text-muted)',
+                        boxShadow: forgotPasswordMethod === 'sms' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      SMS
+                    </button>
+                  </div>
+                </>
               )}
 
-              <div className="reset-method-selection" style={{
-                display: 'flex',
-                gap: '8px',
-                marginBottom: '20px',
-                background: 'var(--bg-surface-secondary)',
-                padding: '4px',
-                borderRadius: '12px'
-              }}>
-                <button 
-                  type="button" 
-                  onClick={() => setForgotPasswordMethod('email')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: 'none',
+              <form onSubmit={resetStep === 1 ? handleForgotPassword : handleResetPasswordSubmit} className="animate-fade-in" key={`reset-step-${resetStep}`}>
+                <h1>
+                  {resetStep === 1 ? 'Forgot Password' : resetStep === 2 ? 'Verify Code' : 'New Password'}
+                </h1>
+                
+                {forgotPasswordStatus.message && (
+                  <div className={`auth-status ${forgotPasswordStatus.type}`} style={{ 
+                    padding: '10px 12px', 
+                    borderRadius: '8px', 
+                    marginBottom: '16px', 
                     fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: forgotPasswordMethod === 'email' ? 'var(--bg-card)' : 'transparent',
-                    color: forgotPasswordMethod === 'email' ? 'var(--primary-blue)' : 'var(--text-muted)',
-                    boxShadow: forgotPasswordMethod === 'email' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Email
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setForgotPasswordMethod('sms')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    background: forgotPasswordMethod === 'sms' ? 'var(--bg-card)' : 'transparent',
-                    color: forgotPasswordMethod === 'sms' ? 'var(--primary-blue)' : 'var(--text-muted)',
-                    boxShadow: forgotPasswordMethod === 'sms' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  SMS
-                </button>
-              </div>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: forgotPasswordStatus.type === 'success' ? 'var(--success-bg)' : 'var(--error-bg)',
+                    color: forgotPasswordStatus.type === 'success' ? 'var(--success)' : 'var(--error)',
+                    border: '1px solid currentColor'
+                  }}>
+                    {forgotPasswordStatus.message}
+                  </div>
+                )}
 
-              <form onSubmit={resetOtpStep ? handleResetPasswordSubmit : handleForgotPassword}>
-                {resetOtpStep ? (
+                {resetStep === 2 ? (
                   <>
-                    <div className="form-group" style={{ marginBottom: '16px' }}>
-                      <label><Lock size={14} /> 6-Digit Reset Code</label>
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '20px' }}>
+                      Enter the 6-digit code sent to <strong>{forgotPasswordEmail}</strong>
+                    </p>
+                    <div className="form-group" style={{ marginBottom: '20px' }}>
+                      <label style={{ justifyContent: 'center' }}>Verification Code</label>
                       <div className="input-wrapper">
                         <input 
                           type="text" 
                           value={resetOtp} 
                           onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="Your 6-digit code" 
+                          placeholder="000000" 
                           required 
                           autoFocus
-                          style={{ textAlign: 'center', letterSpacing: '4px', fontWeight: 'bold' }}
+                          style={{ textAlign: 'center', letterSpacing: '8px', fontWeight: 'bold', fontSize: '20px' }}
                         />
                       </div>
                     </div>
+                    
+                    <button type="submit" className="btn-primary" style={{ width: '100%', marginBottom: '16px' }}>
+                      Continue
+                    </button>
+
+                    <div style={{ textAlign: 'center' }}>
+                      {resendCooldown > 0 ? (
+                        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                          Resend code in {resendCooldown}s
+                        </span>
+                      ) : (
+                        <button 
+                          type="button" 
+                          onClick={() => handleForgotPassword()}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--primary-blue)', 
+                            fontSize: '13px', 
+                            fontWeight: 600, 
+                            cursor: 'pointer',
+                            padding: '4px 8px'
+                          }}
+                        >
+                          Resend Code
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : resetStep === 3 ? (
+                  <>
                     <div className="form-group" style={{ marginBottom: '16px' }}>
-                      <label><Lock size={14} /> New Password</label>
+                      <label><Lock size={14} /> Create New Password</label>
                       <div className="input-wrapper" style={{ position: 'relative' }}>
                         <input 
                           type={showPassword ? "text" : "password"} 
                           value={newResetPassword} 
                           onChange={(e) => setNewResetPassword(e.target.value)}
-                          placeholder="New password" 
+                          placeholder="Min. 8 characters" 
                           required 
+                          autoFocus
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="eye-btn">
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="eye-btn" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
                     </div>
-                    <div className="form-group" style={{ marginBottom: '20px' }}>
-                      <label><Lock size={14} /> Confirm New Password</label>
+                    <div className="form-group" style={{ marginBottom: '24px' }}>
+                      <label><Lock size={14} /> Confirm Password</label>
                       <div className="input-wrapper">
                         <input 
                           type={showPassword ? "text" : "password"} 
                           value={confirmResetPassword} 
                           onChange={(e) => setConfirmResetPassword(e.target.value)}
-                          placeholder="Confirm new password" 
+                          placeholder="Repeat new password" 
                           required 
                         />
                       </div>
                     </div>
                     <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
-                      {loading ? <Loader className="animate-spin" size={18} /> : 'Reset Password'}
+                      {loading ? <Loader className="animate-spin" size={18} /> : 'Save & Login'}
                     </button>
                   </>
                 ) : (
                   <>
                     <div className="form-group" style={{ marginBottom: '20px' }}>
-                      <label><Mail size={14} /> Registered Email</label>
+                      <label><Mail size={14} /> Your Email</label>
                       <div className="input-wrapper">
                         <input 
                           type="email" 
@@ -532,11 +631,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                           autoFocus
                         />
                       </div>
-                      {forgotPasswordMethod === 'sms' && (
-                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          We'll send the reset code to the phone number linked to this email.
-                        </p>
-                      )}
                     </div>
                     <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
                       {loading ? <Loader className="animate-spin" size={18} /> : 'Send Reset Code'}
@@ -548,9 +642,12 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                   type="button" 
                   className="btn-ghost" 
                   onClick={() => {
-                    setIsForgotPassword(false);
-                    setResetOtpStep(false);
-                    setForgotPasswordStatus({ type: '', message: '' });
+                    if (resetStep > 1) {
+                        setResetStep(resetStep - 1);
+                        setForgotPasswordStatus({ type: '', message: '' });
+                    } else {
+                        setIsForgotPassword(false);
+                    }
                   }}
                   style={{ 
                     width: '100%', 
@@ -566,7 +663,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }) {
                     cursor: 'pointer'
                   }}
                 >
-                  <ArrowLeft size={16} /> Back to Sign In
+                  <ArrowLeft size={16} /> {resetStep > 1 ? 'Go Back' : 'Back to Login'}
                 </button>
               </form>
             </div>

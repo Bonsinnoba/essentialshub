@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchBackend, formatImageUrl } from '../services/api';
-import { Search, Send, MapPin, Check, CheckCheck, MessageSquare, Megaphone, Users, User, Clock, Bell, ChevronLeft, ChevronDown, MoreVertical, Paperclip, Loader, CheckCircle, X, Hash, Info } from 'lucide-react';
+import { Search, Send, MapPin, Check, CheckCheck, MessageSquare, Megaphone, Users, User, Clock, Bell, ChevronLeft, ChevronDown, MoreVertical, Paperclip, Loader, CheckCircle, X, Hash, Info, Settings, Trash2, Database, ShieldAlert, FileSearch } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function StaffChat() {
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [activeChat, setActiveChat] = useState('global'); // 'global' or user ID
@@ -28,6 +30,12 @@ export default function StaffChat() {
   
   const currentUser = JSON.parse(localStorage.getItem('ehub_user') || '{}');
   const isAdminOrManager = ['super', 'admin', 'manager'].includes(currentUser.role);
+  const isSuper = currentUser.role === 'super';
+
+  // Maintenance State
+  const [showMaintenance, setShowMaintenance] = useState(false);
+  const [maintStats, setMaintStats] = useState(null);
+  const [maintLoading, setMaintLoading] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -162,6 +170,41 @@ export default function StaffChat() {
     }
   };
 
+  const fetchMaintStats = async () => {
+    setMaintLoading(true);
+    try {
+      const data = await fetchBackend('/admin_chat_maintenance.php?action=stats');
+      if (data.success) {
+        setMaintStats(data.stats);
+      }
+    } catch (err) {
+      addToast('Failed to fetch maintenance stats', 'error');
+    } finally {
+      setMaintLoading(false);
+    }
+  };
+
+  const handleMaintenanceAction = async (action, body = {}) => {
+    if (!(await confirm(`Are you sure you want to perform: ${action}?`))) return;
+    setMaintLoading(true);
+    try {
+      const data = await fetchBackend(`/admin_chat_maintenance.php?action=${action}`, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      if (data.success) {
+        addToast(data.message, 'success');
+        fetchMaintStats();
+      } else {
+        addToast(data.error || 'Action failed', 'error');
+      }
+    } catch (err) {
+      addToast('Network error', 'error');
+    } finally {
+      setMaintLoading(false);
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -208,7 +251,73 @@ export default function StaffChat() {
            </h1>
            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '15px' }}>Team collaboration & internal announcements</p>
         </div>
+        {isSuper && (
+          <button 
+            onClick={() => { setShowMaintenance(true); fetchMaintStats(); }}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', 
+              borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+              fontSize: '14px', fontWeight: 700, color: 'var(--text-main)', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)', transition: 'all 0.2s'
+            }}
+          >
+            <Settings size={18} /> Maintenance
+          </button>
+        )}
       </div>
+
+      {/* Maintenance Modal */}
+      {showMaintenance && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(4px)' }}>
+          <div className="glass" style={{ width: '100%', maxWidth: '500px', padding: '32px', borderRadius: '24px', background: 'var(--bg-surface)', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', border: '1px solid var(--border-light)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShieldAlert size={24} color="#ef4444" /> System Maintenance
+              </h2>
+              <button onClick={() => setShowMaintenance(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+
+            {maintLoading && !maintStats ? (
+              <div style={{ padding: '40px', textAlign: 'center' }}><Loader className="spin" /></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {maintStats && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'var(--bg-main)', padding: '16px', borderRadius: '16px' }}>
+                    <div style={{ fontSize: '13px' }}><div style={{ color: 'var(--text-muted)' }}>Messages</div><strong>{maintStats.total_messages}</strong></div>
+                    <div style={{ fontSize: '13px' }}><div style={{ color: 'var(--text-muted)' }}>Attachments</div><strong>{maintStats.with_attachments}</strong></div>
+                    <div style={{ fontSize: '13px' }}><div style={{ color: 'var(--text-muted)' }}>Traffic Logs</div><strong>{maintStats.traffic_logs}</strong></div>
+                    <div style={{ fontSize: '13px' }}><div style={{ color: 'var(--text-muted)' }}>Oldest Msg</div><strong>{maintStats.oldest_message ? new Date(maintStats.oldest_message).toLocaleDateString() : 'N/A'}</strong></div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <button 
+                    onClick={() => handleMaintenanceAction('prune', { days: 180 })}
+                    className="btn-warn"
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}
+                  >
+                    <Trash2 size={18} /> Prune Messages (&gt; 180 days)
+                  </button>
+                  <button 
+                    onClick={() => handleMaintenanceAction('clean_orphans')}
+                    className="btn-secondary"
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}
+                  >
+                    <FileSearch size={18} /> Cleanup Orphan Files
+                  </button>
+                  <button 
+                    onClick={() => handleMaintenanceAction('clear_traffic')}
+                    className="btn-danger"
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}
+                  >
+                    <Database size={18} /> Clear Traffic Logs
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="staff-chat-container" style={{ 
         display: 'flex', 

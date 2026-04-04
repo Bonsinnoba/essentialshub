@@ -22,7 +22,7 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
             level_name VARCHAR(50) DEFAULT 'Starter',
             avatar_text VARCHAR(10) DEFAULT 'U',
             profile_image LONGTEXT,
-            wallet_balance DECIMAL(10, 2) DEFAULT 0.00,
+            profile_image LONGTEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
@@ -31,9 +31,7 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         if (!in_array('role', $cols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN role ENUM('customer', 'admin', 'branch_admin', 'marketing', 'accountant', 'super') DEFAULT 'customer' AFTER address");
         }
-        if (!in_array('wallet_balance', $cols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN wallet_balance DECIMAL(10, 2) DEFAULT 0.00 AFTER id_verified_at");
-        }
+
         if (!in_array('profile_image', $cols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN profile_image LONGTEXT AFTER avatar_text");
         }

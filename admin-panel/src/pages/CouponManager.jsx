@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Search, Edit2, Trash2, X, CheckCircle, Copy } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../services/api';
 
 export default function CouponManager() {
   const [coupons, setCoupons] = useState([]);
@@ -10,6 +11,7 @@ export default function CouponManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { addToast } = useNotifications();
+  const { confirm } = useConfirm();
   
   const [formData, setFormData] = useState({
     id: null,
@@ -94,7 +96,7 @@ export default function CouponManager() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this coupon?")) return;
+    if (!(await confirm("Are you sure you want to delete this coupon?"))) return;
     try {
       const response = await fetch(`${API_BASE_URL}/coupons.php`, {
         method: 'DELETE',
@@ -173,7 +175,7 @@ export default function CouponManager() {
                              </div>
                          </td>
                          <td style={{ padding: '16px 20px', fontWeight: 600 }}>
-                            {coupon.discount_type === 'percent' ? `${parseFloat(coupon.discount_value)}% OFF` : `GH¢${parseFloat(coupon.discount_value).toFixed(2)} OFF`}
+                            {coupon.discount_type === 'percent' ? `${parseFloat(coupon.discount_value)}% OFF` : `GH₵ ${parseFloat(coupon.discount_value).toFixed(2)} OFF`}
                          </td>
                          <td style={{ padding: '16px 20px' }}>
                              {parseInt(coupon.is_active) === 1 && (!coupon.valid_until || new Date(coupon.valid_until) > new Date()) ? (

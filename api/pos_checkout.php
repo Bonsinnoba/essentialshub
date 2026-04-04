@@ -17,7 +17,7 @@ try {
     $stmt->execute([$cashierId]);
     $cashier = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$cashier || !in_array($cashier['role'], ['super', 'admin', 'branch_admin'])) {
+    if (!$cashier || !in_array($cashier['role'], ['super', 'admin', 'branch_admin', 'store_manager'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Only authorized staff can perform POS sales.']);
         exit;
@@ -78,17 +78,28 @@ try {
     foreach ($items as $item) {
         $pId = (int)$item['id'];
         $qty = (int)$item['quantity'];
-        $price = (float)$item['price'];
+
+        // FIX #9: Fetch price from DB — never trust client-submitted price
+        $priceStmt = $pdo->prepare("SELECT name, price, discount_percent, sale_ends_at, stock_quantity FROM products WHERE id = ?");
+        $priceStmt->execute([$pId]);
+        $prod = $priceStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$prod) {
+            throw new Exception("Product ID {$pId} not found.");
+        }
+
+        // Use server-side effective price
+        require_once 'order_utils.php'; // getEffectivePrice may live here or security.php
+        $price = function_exists('getEffectivePrice') ? getEffectivePrice($prod) : (float)$prod['price'];
 
         $insertItem->execute([$orderId, $pId, $qty, $price]);
         $updateStock->execute([$qty, $pId]);
 
         // Low stock alerts logic
-        $checkProduct->execute([$pId]);
-        $prod = $checkProduct->fetch(PDO::FETCH_ASSOC);
-        if ($prod && $prod['stock_quantity'] <= 10) {
+        $newStock = $prod['stock_quantity'] - $qty;
+        if ($newStock <= 10) {
             $notifTitle = "Low Stock: " . $prod['name'];
-            $notifMsg = "Physical sale (ORD-{$orderId}) reduced stock to {$prod['stock_quantity']}. Please restock.";
+            $notifMsg = "Physical sale (ORD-{$orderId}) reduced stock to {$newStock}. Please restock.";
             $pdo->prepare("INSERT INTO notifications (user_id, title, message, type) SELECT id, ?, ?, 'system' FROM users WHERE role IN ('admin', 'super')")
                 ->execute([$notifTitle, $notifMsg]);
         }

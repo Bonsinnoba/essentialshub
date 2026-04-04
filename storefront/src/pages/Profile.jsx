@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Camera, Star, ShieldCheck, RefreshCcw, Lock } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Camera, Star, ShieldCheck, RefreshCcw, Lock, Globe } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNotifications } from '../context/NotificationContext';
 import { updateProfile } from '../services/api';
+import { useConfirm } from '../context/ConfirmContext';
 import AlertModal from '../components/AlertModal';
 
 
 export default function Profile() {
   const { user, updateUser, resetUser } = useUser();
+  const { confirm } = useConfirm();
   const { addToast } = useNotifications();
   const navigate = useNavigate();
   
@@ -16,7 +18,8 @@ export default function Profile() {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    address: user?.address || ''
+    address: user?.address || '',
+    region: user?.region || 'Greater Accra'
   });
 
   const [alert, setAlert] = useState({
@@ -33,7 +36,8 @@ export default function Profile() {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        address: user.address || ''
+        address: user.address || '',
+        region: user.region || 'Greater Accra'
       });
     }
   }, [user]);
@@ -84,11 +88,12 @@ export default function Profile() {
   };
 
   const handleReset = async () => {
-    if (window.confirm('Are you sure you want to reset your profile to defaults? All changes and your profile image will be removed.')) {
+    if (await confirm('Are you sure you want to reset your profile to defaults? All changes and your profile image will be removed.')) {
         try {
             const defaults = {
                 name: 'Guest User', 
                 address: '', 
+                region: 'Greater Accra',
                 profileImage: null,
                 avatar: 'G'
             };
@@ -229,8 +234,21 @@ export default function Profile() {
             <h2 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: 800 }}>{user.name}</h2>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '14px' }}>
               <Star size={14} fill="var(--warning)" color="var(--warning)" />
-              <span>{user.levelName} Level {user.level}</span>
+              <span>{user.level_name || 'Starter'} Level {user.level || 1}</span>
             </div>
+
+            {/* Progression Progress Bar */}
+            {user.level < 3 && (
+              <div style={{ marginTop: '20px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px', fontWeight: 700 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Next Level: {user.level === 1 ? 'Elite' : 'VIP'}</span>
+                  <span style={{ color: 'var(--primary-blue)' }}>{user.progress_percent || 0}%</span>
+                </div>
+                <div style={{ height: '6px', background: 'var(--bg-main)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${user.progress_percent || 0}%`, height: '100%', background: 'linear-gradient(to right, var(--primary-blue), var(--accent-blue))', borderRadius: '3px' }}></div>
+                </div>
+              </div>
+            )}
 
             {user?.role && user.role !== 'customer' && (
               <div style={{ 
@@ -332,7 +350,7 @@ export default function Profile() {
               </div>
               <div className="form-group">
                 <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                  <Phone size={14} style={{ marginRight: '4px' }} /> Phone Number {user.phone && <span style={{ fontSize: '10px', color: 'var(--primary-blue)', marginLeft: '4px' }}>(Permanent)</span>}
+                  <Phone size={14} style={{ marginRight: '4px' }} /> Phone Number
                 </label>
                 <div className="input-wrapper" style={{ position: 'relative' }}>
                   <input 
@@ -340,23 +358,54 @@ export default function Profile() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    disabled={!!user.phone}
                     placeholder="Add your phone"
                     style={{ 
                       width: '100%', 
                       padding: '14px 16px', 
                       borderRadius: '12px', 
                       border: '1px solid var(--border-light)', 
-                      background: !!user.phone ? 'var(--bg-surface-secondary)' : 'var(--bg-main)', 
-                      color: !!user.phone ? 'var(--text-muted)' : 'var(--text-main)',
+                      background: 'var(--bg-main)', 
+                      color: 'var(--text-main)',
                       fontSize: '15px',
-                      outline: 'none',
-                      cursor: !!user.phone ? 'not-allowed' : 'text',
-                      opacity: !!user.phone ? 0.7 : 1
+                      outline: 'none'
                     }} 
                   />
-                  {user.phone && <Lock size={14} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />}
                 </div>
+              </div>
+            </div>
+ 
+            <div className="form-group">
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                <Globe size={14} style={{ marginRight: '4px' }} /> Delivery Region
+              </label>
+              <div className="input-wrapper">
+                <select 
+                  name="region" 
+                  value={formData.region} 
+                  onChange={handleChange} 
+                  style={{ 
+                    width: '100%', 
+                    padding: '14px 16px', 
+                    borderRadius: '12px', 
+                    border: '1px solid var(--border-light)', 
+                    background: 'var(--bg-main)', 
+                    color: 'var(--text-main)',
+                    fontSize: '15px',
+                    outline: 'none',
+                    appearance: 'none',
+                    cursor: 'pointer'
+                  }} 
+                >
+                  <option value="Greater Accra">Greater Accra</option>
+                  <option value="Ashanti">Ashanti (Kumasi)</option>
+                  <option value="Upper West">Upper West (Wa)</option>
+                  <option value="Western">Western</option>
+                  <option value="Central">Central</option>
+                  <option value="Eastern">Eastern</option>
+                  <option value="Volta">Volta</option>
+                  <option value="Northern">Northern</option>
+                  <option value="Upper East">Upper East</option>
+                </select>
               </div>
             </div>
 

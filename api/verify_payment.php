@@ -20,7 +20,11 @@ try {
 
     // 3. Verify with Paystack
     $config = require '.env.php';
-    $secretKey = $config['PAYSTACK_SECRET'] ?? "sk_test_ReplaceWithYourSecretKeyHere";
+    $secretKey = $config['PAYSTACK_SECRET'] ?? "";
+
+    if (!$secretKey) {
+        throw new Exception("Paystack Secret Key is missing in environment.");
+    }
 
     $url = "https://api.paystack.co/transaction/verify/" . rawurlencode($reference);
 
@@ -51,6 +55,20 @@ try {
     }
 
     // 4. Check if reference already used (Idempotency)
+    // FIX #7: Self-heal wallet_transactions table — it may not exist on fresh installs
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS wallet_transactions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            reference VARCHAR(100) UNIQUE NOT NULL,
+            amount DECIMAL(10,2),
+            type VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $schemaErr) {
+        error_log("wallet_transactions schema check failed: " . $schemaErr->getMessage());
+    }
+
     // Check wallet_transactions
     $stmt = $pdo->prepare("SELECT id FROM wallet_transactions WHERE reference = ?");
     $stmt->execute([$reference]);
@@ -70,45 +88,19 @@ try {
 
     $pdo->beginTransaction();
 
-    if ($type === 'wallet_topup') {
-        // Credit Wallet
-        $stmt = $pdo->prepare("INSERT INTO wallet_transactions (user_id, amount, type, reference, title, details, status) VALUES (?, ?, 'credit', ?, 'Wallet Top-up', 'Funded via Paystack', 'completed')");
-        $stmt->execute([$userId, $amountPaid, $reference]);
-
-        // Update User Balance
-        $stmt = $pdo->prepare("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?");
-        $stmt->execute([$amountPaid, $userId]);
-
-        $message = "Wallet topped up with GHS " . number_format($amountPaid, 2);
-    } elseif ($type === 'order_payment') {
-        // Order logic is a bit complex as we might need to create the order HERE if not created yet,
-        // OR verify an existing pending order.
-        // For simplicity, we assume usage: Frontend creates order -> Payment -> Verify -> Update Order Status.
-        // But better flow: Verify Payment -> Create Order.
-
-        // Let's support: "Here is a reference, create this order" logic if needed, OR just return success so frontend can call create_order with reference.
-        // For security, verifying THEN creating order is safer.
-
-        // However, if we just want to verify:
-        // We will assume 'order_payment' type just validates the transaction for the frontend to proceed,
-        // OR we can record it.
-
-        // Let's implement robust: If logic is "Pay for Order", we update the order if order_id provided, or just return success.
-
+    if ($type === 'order_payment') {
         // If order_id is provided, update it.
         if (isset($data['order_id'])) {
             $orderId = (int)$data['order_id'];
-            $stmt = $pdo->prepare("UPDATE orders SET status = 'processing', payment_reference = ?, payment_method = 'Paystack' WHERE id = ? AND user_id = ?");
-            // Validation: Check if order amount matches payment amount?
-            // For now, simpler update.
-            $stmt->execute([$reference, $orderId, $userId]);
-            $message = "Order #$orderId payment verified";
+            require_once 'order_utils.php';
+            completeOrder($orderId, $pdo);
+            $message = "Order verification complete";
         } else {
             // Just verifying for valid payment to allow order creation
             $message = "Payment verified successfully";
         }
     } else {
-        throw new Exception("Invalid transaction type");
+        throw new Exception("Invalid transaction type or wallet top-ups are disabled.");
     }
 
     $pdo->commit();

@@ -18,7 +18,20 @@ const decodeHtml = (html) => {
 const formatImageUrl = (url) => {
     if (!url) return url;
     // Fix hardcoded dev URLs from DB
-    url = url.replace('http://electrocom.local/api/', '');
+    const cleaningBases = [
+        'http://localhost:8000/api/',
+        'http://localhost:8000/',
+        'http://127.0.0.1:8000/api/',
+        'http://127.0.0.1:8000/',
+        'http://electrocom.local/api/',
+        'http://electrocom.local/',
+        'https://electrocom.local/api/',
+        'https://electrocom.local/'
+    ];
+    cleaningBases.forEach(base => {
+        url = url.replace(base, '');
+    });
+    
     if (url.startsWith('http')) return url;
     return `${API_BASE_URL}/${url.startsWith('/') ? url.slice(1) : url}`;
 };
@@ -246,13 +259,13 @@ export const deleteMyAccount = async () => {
     }
 };
 
-export const getWallet = async () => {
+export const fetchTransactions = async () => {
     try {
-        const response = await apiFetch(`${API_BASE_URL}/wallet.php`, getFetchOptions());
-        if (!response.ok) throw new Error('Failed to fetch wallet info');
+        const response = await apiFetch(`${API_BASE_URL}/get_transactions.php`, getFetchOptions());
+        if (response.status === 503) return { success: false, maintenance: true };
         return await response.json();
     } catch (error) {
-        console.error('Error fetching wallet:', error);
+        console.error('Error fetching transactions:', error);
         throw error;
     }
 };

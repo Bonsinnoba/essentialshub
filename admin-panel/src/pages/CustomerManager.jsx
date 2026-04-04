@@ -16,6 +16,7 @@ if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
 
 import { fetchCustomers, toggleUserStatus } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
+import { formatPrice } from '../utils/formatPrice';
 
 
 export default function CustomerManager() {
@@ -328,7 +329,7 @@ export default function CustomerManager() {
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>{c.orders}</td>
-                  <td style={{ padding: '16px 24px', fontWeight: 700 }}>${c.totalSpent.toFixed(2)}</td>
+                  <td style={{ padding: '16px 24px', fontWeight: 700 }}>{formatPrice(c.totalSpent)}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
                       padding: '4px 10px', 
@@ -396,7 +397,7 @@ export default function CustomerManager() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '13px' }}>
                         <span style={{ color: '#64748b' }}>Spent:</span>
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>${c.totalSpent.toFixed(2)}</span>
+                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatPrice(c.totalSpent)}</span>
                       </div>
 
                       <div style={{ 

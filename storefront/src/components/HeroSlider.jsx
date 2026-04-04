@@ -134,30 +134,45 @@ export default function HeroSlider() {
                 {(() => {
                     let blocks = [];
                     try {
-                        blocks = typeof slide.content_blocks === 'string' ? JSON.parse(slide.content_blocks) : (slide.content_blocks || []);
-                    } catch(e) { blocks = []; }
+                        const raw = slide.content_blocks;
+                        blocks = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+                    } catch(e) { 
+                        console.warn("Malformed Hero Slide content blocks:", e);
+                        blocks = []; 
+                    }
                     
                     if (!Array.isArray(blocks)) return null;
   
                     return blocks.map((block, i) => {
+                        if (!block.text && block.type !== 'cta') return null;
+
+                        const top = parseFloat(block.top) || 50;
+                        const left = parseFloat(block.left) || 50;
+
                         const blockStyle = {
                             position: 'absolute',
-                            top: `${block.top}%`,
-                            left: `${block.left}%`,
+                            top: `${top}%`,
+                            left: `${left}%`,
                             transform: 'translate(-50%, -50%)',
                             fontSize: block.fontSize || '16px',
                             color: block.color || '#ffffff',
                             textAlign: block.textAlign || 'center',
                             opacity: block.type === 'paragraph' ? 0.8 : 1,
-                            fontWeight: block.type === 'heading' ? 700 : (block.type === 'subheading' ? 600 : 400),
+                            fontWeight: block.type === 'heading' ? 800 : (block.type === 'subheading' ? 600 : 400),
                             lineHeight: 1.4,
                             maxWidth: '90%',
                             zIndex: 5,
-                            textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                            textShadow: '0 2px 15px rgba(0,0,0,0.6)',
+                            transition: 'all 0.3s ease'
                         };
   
-                        if (block.type === 'heading') return <h3 key={i} className="animate-fade-in" style={{ ...blockStyle, fontSize: block.fontSize || '32px' }}>{block.text}</h3>;
-                        if (block.type === 'subheading') return <h4 key={i} className="animate-fade-in" style={blockStyle}>{block.text}</h4>;
+                        if (block.type === 'heading') return <h3 key={i} className="animate-fade-in" style={{ ...blockStyle, fontSize: block.fontSize || '38px', marginBottom: '0.4em' }}>{block.text}</h3>;
+                        if (block.type === 'subheading') return <h4 key={i} className="animate-fade-in" style={{ ...blockStyle, fontSize: block.fontSize || '20px' }}>{block.text}</h4>;
+                        if (block.type === 'cta') return (
+                          <Link key={i} to={block.link || '#'} className="btn-primary animate-fade-in" style={{ ...blockStyle, position: 'absolute', top: `${top}%`, left: `${left}%`, padding: '10px 24px', whiteSpace: 'nowrap' }}>
+                            {block.text || 'Learn More'}
+                          </Link>
+                        );
                         return <p key={i} className="animate-fade-in" style={blockStyle}>{block.text}</p>;
                     });
                 })()}

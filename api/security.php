@@ -86,6 +86,19 @@ if (!function_exists('encryptData')) {
     }
 }
 
+/**
+ * Helper to get user IP with proxy support
+ */
+if (!function_exists('getClientIP')) {
+    function getClientIP()
+    {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    }
+}
+
 if (!function_exists('decryptData')) {
     function decryptData($ciphertext)
     {
@@ -110,7 +123,12 @@ if (!function_exists('generateToken')) {
         $config = require '.env.php';
         $secret = $config['JWT_SECRET'];
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
-        $payload = json_encode(['user_id' => $userId, 'exp' => time() + (60 * 60 * 24), 'iat' => time()]);
+        $payload = json_encode([
+            'user_id' => $userId, 
+            'exp' => time() + (60 * 60 * 24), 
+            'iat' => time(),
+            'ip'  => getClientIP()
+        ]);
         $b64Header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
         $b64Payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
         $sig = hash_hmac('sha256', "$b64Header.$b64Payload", $secret, true);
@@ -201,6 +219,24 @@ if (!function_exists('authenticate')) {
         }
 
         $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
+
+        // Security: Verify IP Pinning (Hijack Prevention)
+        $tokenIp = $payload['ip'] ?? '';
+        $currentIp = getClientIP();
+        
+        // Only enforce mismatch if token has a valid IP (prevents logout if IP detection fails during login)
+        if (!empty($tokenIp) && $tokenIp !== 'unknown' && $tokenIp !== $currentIp) {
+            if (function_exists('logApp')) logApp('warn', 'AUTH_HIJACK', "Session IP mismatch. Token IP: $tokenIp | Current IP: $currentIp");
+            clearSession();
+            if ($dieOnError) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Security Error: Session originated from a different network. Please log in again.']);
+                exit;
+            }
+            return null;
+        }
+
         if (isset($payload['exp']) && $payload['exp'] < time()) {
             if (function_exists('logApp')) logApp('error', 'AUTH', "AUTH FAIL: Token expired.");
             clearSession();
@@ -346,21 +382,46 @@ if (!function_exists('requireRole')) {
 if (!function_exists('logger')) {
     function logger($level, $source, $message)
     {
+        static $isLogging = false;
+        if ($isLogging) return; // Prevent log recursion (e.g. logApp -> logger -> authenticate -> logApp)
+        $isLogging = true;
+
+        $level = strtolower($level);
+        // Only log info messages if debug mode is on
+        if ($level === 'info' && function_exists('isDebugEnabled') && !isDebugEnabled()) {
+            $isLogging = false;
+            return;
+        }
+
         $logDir = __DIR__ . '/logs';
         if (!is_dir($logDir)) mkdir($logDir, 0755, true);
         
         $userIdCtx = '';
-        if (function_exists('authenticate')) {
-            try {
-                $uid = authenticate(null, false);
-                if ($uid) {
-                    $userIdCtx = " [UID:$uid]";
+        // SAFELY Extract UID without triggering authenticate() recursion
+        // Check for Bearer token or cookie manually
+        $token = null;
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+        } elseif (isset($_COOKIE['ehub_session'])) {
+            $token = $_COOKIE['ehub_session'];
+        }
+
+        if ($token) {
+            $parts = explode('.', $token);
+            if (count($parts) === 3) {
+                $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
+                if (isset($payload['user_id'])) {
+                    $userIdCtx = " [UID:{$payload['user_id']}]";
                 }
-            } catch (Exception $e) {}
+            }
         }
 
         $line = date('Y-m-d H:i:s') . " [" . strtoupper($level) . "] [" . strtoupper($source) . "]$userIdCtx $message" . PHP_EOL;
         file_put_contents($logDir . '/app.log', $line, FILE_APPEND);
+        
+        $isLogging = false;
     }
 }
 
@@ -451,3 +512,139 @@ if (!function_exists('isDebugEnabled')) {
         return false;
     }
 }
+
+/**
+ * Resolve Fulfillment Branch
+ * Maps a user's region to the nearest warehouse, defaulting to HQ
+ */
+if (!function_exists('resolveFulfillmentBranch')) {
+    function resolveFulfillmentBranch($userRegion, $pdo)
+    {
+        try {
+            // 1. Try to find a local warehouse in the same region
+            $stmt = $pdo->prepare("SELECT id FROM store_branches WHERE region = ? AND type = 'warehouse' AND status = 'Online' LIMIT 1");
+            $stmt->execute([$userRegion]);
+            $branchId = $stmt->fetchColumn();
+            
+            if ($branchId) return $branchId;
+            
+            // 2. Fallback to Headquarters (Branch ID 1)
+            return 1; 
+        } catch (Exception $e) {
+            return 1;
+        }
+    }
+}
+
+/**
+ * Calculate Regional Shipping Fee
+ * Returns array with 'fee', 'city', and 'source_branch_id'
+ */
+if (!function_exists('calculateRegionalShipping')) {
+    function calculateRegionalShipping($userRegion, $sourceBranchId, $subtotal, $pdo)
+    {
+        try {
+            // Get source branch details
+            $stmt = $pdo->prepare("SELECT region, type, city FROM store_branches WHERE id = ?");
+            $stmt->execute([$sourceBranchId]);
+            $branch = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$branch) return ['fee' => 25.00, 'city' => 'Accra', 'source_branch_id' => 1]; 
+            
+            $baseFee = 35.00; // Default: Cross-Region
+
+            // Local Delivery (Same region)
+            if ($userRegion === $branch['region']) {
+                $baseFee = 15.00; 
+            }
+            
+            // Apply 50% Discount for orders >= 1500 GHc
+            if ($subtotal >= 1500) {
+                $baseFee = $baseFee * 0.5;
+            }
+
+            return [
+                'fee' => (float)$baseFee,
+                'city' => $branch['city'] ?? 'Accra',
+                'source_branch_id' => $sourceBranchId
+            ];
+        } catch (Exception $e) {
+            return ['fee' => 25.00, 'city' => 'Accra', 'source_branch_id' => 1];
+        }
+    }
+}
+/**
+ * Get Effective Price
+ * Calculates the current price based on percentage discounts and expiry
+ */
+if (!function_exists('getEffectivePrice')) {
+    function getEffectivePrice($product)
+    {
+        $basePrice = (float)($product['price'] ?? 0);
+        $discountPercent = (int)($product['discount_percent'] ?? 0);
+        $saleEndsAt = $product['sale_ends_at'] ?? null;
+
+        if ($discountPercent > 0) {
+            $isExpired = false;
+            if ($saleEndsAt) {
+                $expiryTime = strtotime($saleEndsAt);
+                if ($expiryTime < time()) {
+                    $isExpired = true;
+                }
+            }
+
+            if (!$isExpired) {
+                $discountAmount = $basePrice * ($discountPercent / 100);
+                return max(0, $basePrice - $discountAmount);
+            }
+        }
+
+        return $basePrice;
+    }
+}
+/**
+ * Update User Level based on spend
+ */
+if (!function_exists('updateUserLevel')) {
+    function updateUserLevel($userId, $pdo)
+    {
+        try {
+            // 1. Calculate total spend from completed orders
+            $stmt = $pdo->prepare("
+                SELECT SUM(total_amount) 
+                FROM orders 
+                WHERE user_id = ? AND status IN ('delivered', 'completed')
+            ");
+            $stmt->execute([$userId]);
+            $totalSpend = (float)$stmt->fetchColumn() ?: 0;
+
+            // 2. Determine Level based on spend
+            $config = $GLOBALS['config'] ?? require '.env.php';
+            $eliteThreshold = $config['ELITE_THRESHOLD'] ?? 500;
+            $vipThreshold = $config['VIP_THRESHOLD'] ?? 2000;
+
+            $levelName = "Starter";
+            $levelNum = 1;
+
+            if ($totalSpend >= $vipThreshold) {
+                $levelName = "VIP"; $levelNum = 3;
+            } elseif ($totalSpend >= $eliteThreshold) {
+                $levelName = "Elite"; $levelNum = 2;
+            }
+
+            // 3. Update user level in DB if it changed
+            $stmt = $pdo->prepare("UPDATE users SET level = ?, level_name = ? WHERE id = ? AND (level != ? OR level_name != ? OR level_name IS NULL)");
+            $stmt->execute([$levelNum, $levelName, $userId, $levelNum, $levelName]);
+            
+            return [
+                'total_spend' => $totalSpend,
+                'level_name' => $levelName,
+                'level_num' => $levelNum
+            ];
+        } catch (Exception $e) {
+            error_log("Update user level error: " . $e->getMessage());
+            return null;
+        }
+    }
+}
+?>

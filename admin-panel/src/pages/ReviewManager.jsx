@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, Star, Search, Filter, AlertCircle, ShoppingBag, User } from 'lucide-react';
 import { fetchAllReviews, deleteReview } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function ReviewManager() {
   const [reviews, setReviews] = useState([]);
@@ -9,6 +10,7 @@ export default function ReviewManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRating, setFilterRating] = useState('All');
   const { addToast } = useNotifications();
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     loadReviews();
@@ -29,7 +31,7 @@ export default function ReviewManager() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this review? This will also update the product's average rating.")) return;
+    if (!(await confirm("Are you sure you want to delete this review? This will also update the product's average rating."))) return;
     try {
       const result = await deleteReview(id);
       if (result.success) {

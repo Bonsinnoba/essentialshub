@@ -1,3 +1,4 @@
+<?php
 require_once 'db.php';
 require_once 'notifications.php';
 
@@ -5,7 +6,9 @@ header('Content-Type: application/json');
 
 // Authenticate and Require Roles
 try {
-    $userId = requireRole(RBAC_ALL_ADMINS, $pdo);
+    // FIX #11: Accountants/Marketing have read-only access (via get_products.php).
+    // Product mutations (create/update/delete) are admin-tier only.
+    $userId = requireRole(['super', 'admin', 'branch_admin', 'store_manager'], $pdo);
     $userName = getUserName($userId, $pdo);
 } catch (Exception $e) {
     http_response_code(401);
@@ -52,6 +55,12 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
         if (!in_array('location', $columns)) {
             $pdo->exec("ALTER TABLE products ADD COLUMN location VARCHAR(255) AFTER product_code");
         }
+        if (!in_array('discount_percent', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN discount_percent INT DEFAULT 0 AFTER price");
+        }
+        if (!in_array('sale_ends_at', $columns)) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN sale_ends_at DATETIME DEFAULT NULL AFTER discount_percent");
+        }
 
         // Performance Indexing
         $indexes = $pdo->query("SHOW INDEX FROM products")->fetchAll(PDO::FETCH_ASSOC);
@@ -75,13 +84,20 @@ if ($config['DB_AUTO_REPAIR'] ?? false) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+
+
 /**
  * Helper to save base64 string as a file safely
  */
 function saveBase64File($base64String, $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
 {
-    if (!$base64String || strpos($base64String, 'data:') === false) {
+    if (!$base64String) {
         return $base64String;
+    }
+
+    if (strpos($base64String, 'data:') === false) {
+        // If it's a URL, normalize it
+        return normalizeLocalPath($base64String);
     }
 
     $dir = 'uploads/';
@@ -133,27 +149,41 @@ if ($method === 'POST') {
     }
 
     $action = $decoded['action'] ?? '';
+    
+    // Consolidate variable extraction for both create and update
+    $name = sanitizeInput($decoded['name'] ?? '');
+    $category = sanitizeInput($decoded['category'] ?? '');
+    if (empty($category)) $category = 'Gadgets';
+    $price = max(0, (float)($decoded['price'] ?? 0));
+    $stock = max(0, (int)($decoded['stock'] ?? 0));
+    $rating = (float)($decoded['rating'] ?? 0.0);
+    $description = sanitizeInput($decoded['description'] ?? '');
+    $image_data = $decoded['image'] ?? '';
+    $colors = $decoded['colors'] ?? '[]';
+    $specs = $decoded['specs'] ?? '{}';
+    $included = $decoded['included'] ?? '[]';
+    $directions = $decoded['directions'] ?? '';
+    $product_code = sanitizeInput($decoded['product_code'] ?? '');
+    $location = sanitizeInput($decoded['location'] ?? '');
+    $gallery_input = $decoded['gallery'] ?? [];
+    $variants = $decoded['variants'] ?? [];
+    $discount_percent = max(0, min(100, (int)($decoded['discount_percent'] ?? 0)));
+    
+    // Robust date formatting for MySQL DATETIME (ensuring seconds are present)
+    $sale_ends_at = null;
+    if (!empty($decoded['sale_ends_at'])) {
+        $raw_date = str_replace('T', ' ', sanitizeInput($decoded['sale_ends_at']));
+        // If it's just YYYY-MM-DD HH:MM, add :00
+        if (strlen($raw_date) === 16) $raw_date .= ':00';
+        $sale_ends_at = $raw_date;
+    }
 
     if ($action === 'create') {
-        $name = sanitizeInput($decoded['name'] ?? '');
-        $category = sanitizeInput($decoded['category'] ?? '');
-        if (empty($category)) $category = 'Gadgets';
-        $price = max(0, (float)($decoded['price'] ?? 0));
-        $stock = max(0, (int)($decoded['stock'] ?? 0));
-        $rating = (float)($decoded['rating'] ?? 0.0);
-        $description = sanitizeInput($decoded['description'] ?? '');
-        $image_data = $decoded['image'] ?? '';
-        $colors = $decoded['colors'] ?? '[]';
-        $specs = $decoded['specs'] ?? '{}';
-        $included = $decoded['included'] ?? '[]';
-        $directions = $decoded['directions'] ?? '';
-        $product_code = sanitizeInput($decoded['product_code'] ?? '');
-        $location = sanitizeInput($decoded['location'] ?? '');
-        $gallery_input = $decoded['gallery'] ?? [];
-        $variants = $decoded['variants'] ?? [];
-
+        // FIX #5: Remove duplicate saveBase64File call (was called twice, creating orphaned files)
         $image_url = saveBase64File($image_data, ['image/jpeg', 'image/png', 'image/webp']);
         $directions_url = saveBase64File($directions, ['application/pdf']);
+
+        if (function_exists('logApp')) logApp('info', 'PRODUCTS', "Creating product: {$name}, Discount: {$discount_percent}, Ends: {$sale_ends_at}");
 
         $gallery_urls = [];
         if (is_array($gallery_input)) {
@@ -171,8 +201,8 @@ if ($method === 'POST') {
 
         try {
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("INSERT INTO products (name, category, price, stock_quantity, rating, description, image_url, gallery, colors, specs, included, directions, product_code, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $category, $price, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location]);
+            $stmt = $pdo->prepare("INSERT INTO products (name, category, price, discount_percent, sale_ends_at, stock_quantity, rating, description, image_url, gallery, colors, specs, included, directions, product_code, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location]);
             $productId = $pdo->lastInsertId();
 
             // Sync to Store Layout (Default to HQ Branch)
@@ -193,14 +223,18 @@ if ($method === 'POST') {
 
             $pdo->commit();
             
-            // Check for low stock and notify admins
+            // Check for low stock and notify admins (throttle to once per day)
             if ($stock < 10) {
-                $notifService = new NotificationService();
-                $notifService->logAdminNotification(
-                    "Low Stock Alert: {$name}",
-                    "Product '{$name}' (ID: {$productId}) is running low on stock. Current quantity: {$stock}.",
-                    'system'
-                );
+                $throttleStmt = $pdo->prepare("SELECT id FROM notifications WHERE title = ? AND created_at >= NOW() - INTERVAL 1 DAY LIMIT 1");
+                $throttleStmt->execute(["Low Stock Alert: {$name}"]);
+                if (!$throttleStmt->fetchColumn()) {
+                    $notifService = new NotificationService();
+                    $notifService->logAdminNotification(
+                        "Low Stock Alert: {$name}",
+                        "Product '{$name}' (ID: {$productId}) is running low on stock. Current quantity: {$stock}.",
+                        'system'
+                    );
+                }
             }
 
             logger('info', 'PRODUCTS', "New product created: {$name} (ID: {$productId}) by {$userName}");
@@ -214,22 +248,11 @@ if ($method === 'POST') {
         }
     } elseif ($action === 'update') {
         $id = (int)($decoded['id'] ?? 0);
-        $name = sanitizeInput($decoded['name'] ?? '');
-        $category = sanitizeInput($decoded['category'] ?? '');
-        if (empty($category)) $category = 'Gadgets';
-        $price = max(0, (float)($decoded['price'] ?? 0));
-        $stock = max(0, (int)($decoded['stock'] ?? 0));
-        $rating = (float)($decoded['rating'] ?? 0.0);
-        $description = sanitizeInput($decoded['description'] ?? '');
-        $image_data = $decoded['image'] ?? '';
-        $colors = $decoded['colors'] ?? '[]';
-        $specs = $decoded['specs'] ?? '{}';
-        $included = $decoded['included'] ?? '[]';
-        $directions = $decoded['directions'] ?? '';
-        $product_code = sanitizeInput($decoded['product_code'] ?? '');
-        $location = sanitizeInput($decoded['location'] ?? '');
-        $gallery_input = $decoded['gallery'] ?? [];
-        $variants = $decoded['variants'] ?? [];
+
+        // FIX #6: Only write debug payload when debug mode is explicitly enabled
+        if (function_exists('isDebugEnabled') && isDebugEnabled()) {
+            file_put_contents('debug_update_' . $id . '.json', json_encode(['payload' => $decoded, 'timestamp' => date('Y-m-d H:i:s')]));
+        }
 
         $image_url = saveBase64File($image_data, ['image/jpeg', 'image/png', 'image/webp']);
         $directions_url = saveBase64File($directions, ['application/pdf']);
@@ -255,8 +278,8 @@ if ($method === 'POST') {
             $oldProduct = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, category = ?, price = ?, stock_quantity = ?, rating = ?, description = ?, image_url = ?, gallery = ?, colors = ?, specs = ?, included = ?, directions = ?, product_code = ?, location = ? WHERE id = ?");
-            $stmt->execute([$name, $category, $price, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $id]);
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, category = ?, price = ?, discount_percent = ?, sale_ends_at = ?, stock_quantity = ?, rating = ?, description = ?, image_url = ?, gallery = ?, colors = ?, specs = ?, included = ?, directions = ?, product_code = ?, location = ? WHERE id = ?");
+            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $id]);
 
             // Cleanup replaced files
             if ($oldProduct) {
@@ -310,14 +333,18 @@ if ($method === 'POST') {
 
             $pdo->commit();
 
-            // Check for low stock and notify admins
+            // Check for low stock and notify admins (throttle to once per day)
             if ($stock < 10) {
-                $notifService = new NotificationService();
-                $notifService->logAdminNotification(
-                    "Low Stock Alert: {$name}",
-                    "Product '{$name}' (ID: {$id}) is running low on stock. Current quantity: {$stock}.",
-                    'system'
-                );
+                $throttleStmt = $pdo->prepare("SELECT id FROM notifications WHERE title = ? AND created_at >= NOW() - INTERVAL 1 DAY LIMIT 1");
+                $throttleStmt->execute(["Low Stock Alert: {$name}"]);
+                if (!$throttleStmt->fetchColumn()) {
+                    $notifService = new NotificationService();
+                    $notifService->logAdminNotification(
+                        "Low Stock Alert: {$name}",
+                        "Product '{$name}' (ID: {$id}) is running low on stock. Current quantity: {$stock}.",
+                        'system'
+                    );
+                }
             }
 
             logger('info', 'PRODUCTS', "Product updated (ID: {$id}) by {$userName}");

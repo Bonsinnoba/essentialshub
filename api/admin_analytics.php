@@ -102,6 +102,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ");
         $data['strategic_insights']['ship_efficiency'] = round((float)$effStmt->fetchColumn(), 1) ?: 0;
 
+        // e. Business Health Status
+        $healthScore = 100;
+        $healthMsg = "Operational efficiency is stable.";
+        
+        if ($data['strategic_insights']['ship_efficiency'] > 48) {
+            $healthScore -= 20;
+            $healthMsg = "Fulfillment is slowing down. Check logistics.";
+        } elseif ($data['strategic_insights']['ship_efficiency'] > 24) {
+            $healthScore -= 10;
+        }
+
+        if ($data['low_stock_count'] > 5) {
+            $healthScore -= 15;
+            $healthMsg = "Critical stock levels detected. Restock soon.";
+        }
+
+        $data['strategic_insights']['health_score'] = $healthScore;
+        $data['strategic_insights']['health_message'] = $healthMsg;
+
         // c. Total Orders count
         $totalOrdersStmt = $pdo->query("SELECT COUNT(id) FROM orders WHERE status != 'cancelled'");
         $data['total_orders'] = (int)$totalOrdersStmt->fetchColumn();

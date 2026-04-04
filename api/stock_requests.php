@@ -1,7 +1,10 @@
 <?php
 // api/stock_requests.php
+require_once 'cors_middleware.php';
 require_once 'db.php';
 require_once 'security.php';
+
+header('Content-Type: application/json');
 
 // Authentication & RBAC
 $userId = authenticate();
@@ -19,14 +22,14 @@ switch ($method) {
 
     case 'GET':
         // Admins can see all, staff see their branch's
-        requireRole(RBAC_STAFF_GROUP, $pdo);
+        requireRole(array_unique(array_merge(RBAC_STAFF_GROUP, RBAC_ALL_ADMINS)), $pdo);
         listRequests($pdo, $role, $branchId);
         break;
 
     case 'PATCH':
-        // Only admins can approve/reject/fulfill
-        requireRole(RBAC_ALL_ADMINS, $pdo);
-        updateRequestStatus($pdo, $userId);
+        // Admins approve/reject; branch staff fulfill
+        requireRole(array_unique(array_merge(RBAC_STAFF_GROUP, RBAC_ALL_ADMINS)), $pdo);
+        updateRequestStatus($pdo, $userId, $role, $branchId);
         break;
 
     default:
@@ -81,8 +84,8 @@ function createRequest($pdo, $userId, $branchId) {
  */
 function listRequests($pdo, $role, $branchId) {
     try {
-        if (in_array($role, RBAC_ALL_ADMINS)) {
-            // Admin sees everything
+        if (in_array($role, ['admin', 'super']) || empty($branchId)) {
+            // HQ Admin sees everything
             $stmt = $pdo->query("
                 SELECT r.*, u.name as requester_name 
                 FROM stock_requests r 
@@ -105,7 +108,7 @@ function listRequests($pdo, $role, $branchId) {
         // Fetch items for each request
         foreach ($requests as &$req) {
             $itemStmt = $pdo->prepare("
-                SELECT ri.*, p.name as product_name, p.sku 
+                SELECT ri.*, p.name as product_name, p.product_code as sku 
                 FROM stock_request_items ri 
                 JOIN products p ON ri.product_id = p.id 
                 WHERE ri.request_id = ?
@@ -124,7 +127,7 @@ function listRequests($pdo, $role, $branchId) {
 /**
  * Update request status (Internal Transfers)
  */
-function updateRequestStatus($pdo, $userId) {
+function updateRequestStatus($pdo, $userId, $role, $branchId) {
     $data = json_decode(file_get_contents('php://input'), true);
     $requestId = (int)($data['id'] ?? 0);
     $newStatus = sanitizeInput($data['status'] ?? '');
@@ -132,6 +135,22 @@ function updateRequestStatus($pdo, $userId) {
     $validStatuses = ['approved', 'rejected', 'fulfilled'];
     if (!$requestId || !in_array($newStatus, $validStatuses)) {
         sendResponse(false, 'Invalid request parameters.');
+    }
+
+    $isHqAdmin = in_array($role, ['admin', 'super']) || empty($branchId);
+
+    if (!$isHqAdmin) {
+        if ($newStatus !== 'fulfilled') {
+            sendResponse(false, 'Forbidden: Only HQ can approve or reject requests.', null, 403);
+        }
+        
+        $stmt = $pdo->prepare("SELECT branch_id FROM stock_requests WHERE id = ?");
+        $stmt->execute([$requestId]);
+        $reqBranchId = $stmt->fetchColumn();
+
+        if ($reqBranchId != $branchId) {
+            sendResponse(false, 'Forbidden: You can only fulfill requests for your own branch.', null, 403);
+        }
     }
 
     try {

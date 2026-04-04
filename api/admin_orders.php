@@ -31,11 +31,12 @@ if ($method === 'GET') {
     try {
         $filterSql = "";
         $params = [];
-        
+
+        // FIX #10: was o.branch_id (wrong), corrected to o.source_branch_id
         if ($role === 'store_manager' || $role === 'branch_admin') {
             $managerBranchId = getManagerBranchId($userId, $pdo);
             if ($managerBranchId) {
-                $filterSql = " WHERE o.branch_id = ? ";
+                $filterSql = " WHERE o.source_branch_id = ? ";
                 $params[] = $managerBranchId;
             }
         }
@@ -48,11 +49,15 @@ if ($method === 'GET') {
                 o.created_at as date,
                 u.name as customer,
                 u.email,
+                u.region as user_region,
                 o.shipping_address as address,
                 'Delivery' as type,
-                o.branch_id
+                o.source_branch_id as branch_id,
+                b.name as branch_name,
+                b.type as branch_type
             FROM orders o
             JOIN users u ON o.user_id = u.id
+            LEFT JOIN store_branches b ON o.source_branch_id = b.id
             $filterSql
             ORDER BY o.created_at DESC
         ");
@@ -110,6 +115,11 @@ if ($method === 'GET') {
 
             logger('info', 'ORDERS', "Order {$idStr} status updated to " . strtoupper($status) . " by {$userName}");
 
+            // Recalculate level if delivered
+            if ($status === 'delivered') {
+                updateUserLevel($order['user_id'], $pdo);
+            }
+
             echo json_encode(['success' => true]);
         } catch (PDOException $e) {
             http_response_code(500);
@@ -125,7 +135,6 @@ if ($method === 'GET') {
         $id = str_replace('ORD-', '', $idStr);
 
         try {
-            // Fetch order and user details
             $stmt = $pdo->prepare("
                 SELECT o.*, u.email, u.name 
                 FROM orders o 
@@ -141,24 +150,23 @@ if ($method === 'GET') {
                 exit;
             }
 
-            // Fetch items
             $itemStmt = $pdo->prepare("SELECT p.name, oi.quantity as qty, oi.price_at_purchase as price FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?");
             $itemStmt->execute([$id]);
             $items = $itemStmt->fetchAll();
 
             require_once 'notifications.php';
             $notifier = new NotificationService();
-            
+
             $subject = "Receipt for Order #{$idStr}";
             $itemsList = "";
             foreach ($items as $item) {
                 $itemsList .= "- {$item['name']} x {$item['qty']} (GHS " . number_format($item['price'], 2) . ")\n";
             }
-            
+
             $msg = "Hello {$order['name']},\n\nHere is your receipt for order #{$idStr}.\n\nItems:\n{$itemsList}\nTotal: GHS " . number_format($order['total_amount'], 2) . "\n\nThank you for shopping with ElectroCom!";
-            
+
             $notifier->sendEmail($order['email'], $subject, $msg);
-            
+
             logger('info', 'ORDERS', "Receipt for order {$idStr} manually re-sent by {$userName}");
             echo json_encode(['success' => true, 'message' => 'Receipt re-sent successfully']);
         } catch (Exception $e) {
@@ -198,9 +206,15 @@ if ($method === 'GET') {
                 exit;
             }
 
-            // Code matches, mark as delivered
             $updateStmt = $pdo->prepare("UPDATE orders SET status = 'delivered' WHERE id = ?");
             $updateStmt->execute([$id]);
+
+            $userStmt = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
+            $userStmt->execute([$id]);
+            $order = $userStmt->fetch();
+            if ($order) {
+                updateUserLevel($order['user_id'], $pdo);
+            }
 
             logger('ok', 'ORDERS', "Order {$idStr} verified and DELIVERED via OTP by {$userName}");
 

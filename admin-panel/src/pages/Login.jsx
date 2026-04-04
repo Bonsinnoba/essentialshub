@@ -41,7 +41,7 @@ export default function Login() {
         }
     } catch (err) {
         console.error('Detailed login error:', err);
-        setError(`Connection error: ${err.message || 'Unknown network error'}. URL: ${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`);
+        setError(`Connection error: ${err.message || 'Unknown network error'}. URL: ${API_BASE_URL}`);
     } finally {
         setLoading(false);
     }

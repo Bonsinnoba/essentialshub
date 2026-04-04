@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNotifications } from '../context/NotificationContext';
-import { useWallet } from '../context/WalletContext';
 import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { CreditCard, Truck, ShieldCheck, ArrowLeft, ChevronRight, CheckCircle, Smartphone, MapPin, Wallet as WalletIcon, Tag } from 'lucide-react';
+import { CreditCard, Truck, ShieldCheck, ArrowLeft, ChevronRight, CheckCircle, Smartphone, MapPin, Tag } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 import { createOrder, validateCoupon } from '../services/api';
 
 import { usePaystackPayment } from 'react-paystack';
@@ -12,8 +12,8 @@ import { usePaystackPayment } from 'react-paystack';
 export default function Checkout() {
   const { cartItems, subtotal, clearCart, appliedCoupon, applyCoupon, removeCoupon, isApplyingCoupon, couponError } = useCart();
   const { addToast } = useNotifications();
-  const { balance, deductBalance, addTransaction } = useWallet();
   const { user } = useUser();
+  const { formatPrice } = useSettings();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
@@ -36,49 +36,46 @@ export default function Checkout() {
 
   // GHANA_REGIONS Moved up to use in shipping calculation
   const GHANA_REGIONS = [
-    { code: 'GA-', city: 'Accra', label: 'Greater Accra (GA)', shippingFee: 20 },
-    { code: 'AK-', city: 'Kumasi', label: 'Ashanti (AK)', shippingFee: 20 },
-    { code: 'CR-', city: 'Cape Coast', label: 'Central (CR)', shippingFee: 95 },
-    { code: 'WR-', city: 'Takoradi', label: 'Western (WR)', shippingFee: 130 },
-    { code: 'ER-', city: 'Koforidua', label: 'Eastern (ER)', shippingFee: 65 },
-    { code: 'VR-', city: 'Ho', label: 'Volta (VR)', shippingFee: 105 },
-    { code: 'NR-', city: 'Tamale', label: 'Northern (NR)', shippingFee: 170 },
-    { code: 'UE-', city: 'Bolgatanga', label: 'Upper East (UE)', shippingFee: 180 },
-    { code: 'UW-', city: 'Wa', label: 'Upper West (UW)', shippingFee: 20 },
-    { code: 'BA-', city: 'Sunyani', label: 'Brong Ahafo (BA)', shippingFee: 85 },
-    { code: 'WN-', city: 'Sefwi Wiawso', label: 'Western North (WN)', shippingFee: 145 },
-    { code: 'AH-', city: 'Goaso', label: 'Ahafo (AH)', shippingFee: 90 },
-    { code: 'BE-', city: 'Techiman', label: 'Bono East (BE)', shippingFee: 85 },
-    { code: 'OR-', city: 'Dambai', label: 'Oti (OR)', shippingFee: 170 },
-    { code: 'NE-', city: 'Nalerigu', label: 'North East (NE)', shippingFee: 190 },
-    { code: 'SR-', city: 'Damongo', label: 'Savannah (SR)', shippingFee: 95 },
+    { code: 'GA-', city: 'Accra', label: 'Greater Accra (GA)' },
+    { code: 'AK-', city: 'Kumasi', label: 'Ashanti (AK)' },
+    { code: 'CR-', city: 'Cape Coast', label: 'Central (CR)' },
+    { code: 'WR-', city: 'Takoradi', label: 'Western (WR)' },
+    { code: 'ER-', city: 'Koforidua', label: 'Eastern (ER)' },
+    { code: 'VR-', city: 'Ho', label: 'Volta (VR)' },
+    { code: 'NR-', city: 'Tamale', label: 'Northern (NR)' },
+    { code: 'UE-', city: 'Bolgatanga', label: 'Upper East (UE)' },
+    { code: 'UW-', city: 'Wa', label: 'Upper West (UW)' },
+    { code: 'BA-', city: 'Sunyani', label: 'Brong Ahafo (BA)' },
+    { code: 'WN-', city: 'Sefwi Wiawso', label: 'Western North (WN)' },
+    { code: 'AH-', city: 'Goaso', label: 'Ahafo (AH)' },
+    { code: 'BE-', city: 'Techiman', label: 'Bono East (BE)' },
+    { code: 'OR-', city: 'Dambai', label: 'Oti (OR)' },
+    { code: 'NE-', city: 'Nalerigu', label: 'North East (NE)' },
+    { code: 'SR-', city: 'Damongo', label: 'Savannah (SR)' },
   ];
 
-  const calculateShipping = () => {
-    // Orders exceeding 1000 threshold get free shipping
-    if (subtotal > 1000) return 0;
+  const [shippingData, setShippingData] = useState({ fee: 20, city: 'Accra', is_discounted: false });
+
+  const fetchShippingEstimate = useCallback(async () => {
+    if (!formData.region) return;
     
-    // Base fee Calculation prioritizes explicit Region selection
-    if (formData.region) {
-       const exactRegion = GHANA_REGIONS.find(r => r.code === formData.region);
-       if (exactRegion) {
-         return exactRegion.shippingFee;
-       }
+    try {
+      const regionLabel = GHANA_REGIONS.find(r => r.code === formData.region)?.label || formData.region;
+      const response = await fetch(`http://localhost:8000/shipping_estimate.php?region=${encodeURIComponent(regionLabel)}&subtotal=${subtotal}`);
+      const result = await response.json();
+      if (result.success) {
+        setShippingData(result.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch shipping estimate:", err);
     }
+  }, [formData.region, subtotal]);
 
-    // Check for ZIP input as fallback
-    if (formData.zip) {
-       const uZip = formData.zip.toUpperCase();
-       const exactRegion = GHANA_REGIONS.find(r => uZip.startsWith(r.code));
-       if (exactRegion) {
-         return exactRegion.shippingFee;
-       }
-    }
-    // Default base delivery fee if zip/region is missing
-    return 20; 
-  };
+  useEffect(() => {
+    fetchShippingEstimate();
+  }, [fetchShippingEstimate]);
 
-  const shippingFee = calculateShipping();
+  const shippingFee = shippingData.fee;
   const tax = subtotal * 0.1;
   const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const total = Math.max(0, subtotal - discount + tax + shippingFee);
@@ -93,55 +90,39 @@ export default function Checkout() {
   };
 
   // Paystack Configuration
-  const config = {
+  const [paystackConfig, setPaystackConfig] = useState({
     reference: (new Date()).getTime().toString(),
-    email: formData.email,
-    amount: Math.ceil(total * 100), // Amount in lowest currency unit (e.g., kobo/pesewas)
-    publicKey: 'pk_test_85123d385802319ef58661644155554626155555', // REPLACE WITH YOUR ACTUAL PUBLIC KEY
+    email: formData.email || user?.email || '',
+    amount: Math.ceil(total * 100),
+    publicKey: 'pk_test_85123d385802319ef58661644155554626155555',
     currency: 'GHS',
     channels: paymentMethod === 'momo' ? ['mobile_money'] : ['card', 'mobile_money'],
     metadata: {
       user_id: user?.id,
       type: 'order_payment'
     }
-  };
+  });
 
-  const initializePayment = usePaystackPayment(config);
+  // Update dynamic parts of config when dependencies change
+  useEffect(() => {
+    setPaystackConfig(prev => ({
+        ...prev,
+        email: formData.email || user?.email || '',
+        amount: Math.ceil(total * 100),
+        channels: paymentMethod === 'momo' ? ['mobile_money'] : ['card', 'mobile_money'],
+        metadata: { ...prev.metadata, user_id: user?.id }
+    }));
+  }, [formData.email, user?.email, user?.id, total, paymentMethod]);
+
+  const initializePayment = usePaystackPayment(paystackConfig);
 
   const onSuccess = async (reference) => {
-      // Payment was successful, create order
-      try {
-        const orderData = {
-            user_id: user ? user.id : 1,
-            total_amount: total,
-            items: cartItems.map(item => ({
-                id: item.id,
-                quantity: item.quantity,
-                price: parseFloat(item.price)
-            })),
-            shipping_address: `${formData.address}, ${formData.city}, ${GHANA_REGIONS.find(r => r.code === formData.region)?.label || ''} ${formData.zip}`,
-            payment_method: `${paymentMethod === 'momo' ? 'Mobile Money' : 'Card'}`,
-            payment_reference: reference.reference, // Secure reference
-            coupon_code: appliedCoupon ? appliedCoupon.code : null,
-            discount_amount: discount
-        };
-
-        const response = await createOrder(orderData);
-
-        if (response.success) {
-
-            addToast('Payment successful! Order placed.', 'success');
-            clearCart();
-            navigate('/');
-        } else {
-            throw new Error(response.error || 'Order creation failed after payment');
-        }
-      } catch (error) {
-          console.error(error);
-          addToast(error.message || 'Failed to place order', 'error');
-      } finally {
-          setLoading(false);
-      }
+      // Payment was successful, order is already created as pending
+      // We can just redirect to the success page now
+      addToast('Payment successful! Your order is being processed.', 'success');
+      clearCart();
+      navigate(`/order-success?ref=${reference.reference}`);
+      setLoading(false);
   };
 
   const onClose = () => {
@@ -173,16 +154,79 @@ export default function Checkout() {
     setLoading(true);
 
     if (paymentMethod === 'card' || paymentMethod === 'momo') {
-        // Trigger Paystack
-        initializePayment(onSuccess, onClose);
+        try {
+            // 1. Create Pending Order first
+            const orderData = {
+                total_amount: total,
+                items: cartItems.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity,
+                    price: parseFloat(item.price)
+                })),
+                shipping_address: `${formData.address}, ${formData.city}, ${GHANA_REGIONS.find(r => r.code === formData.region)?.label || ''} ${formData.zip}`,
+                payment_method: `${paymentMethod === 'momo' ? 'Mobile Money' : 'Card'}`,
+                coupon_code: appliedCoupon ? appliedCoupon.code : null,
+                discount_amount: discount
+            };
+
+            const response = await createOrder(orderData);
+
+            if (response.success && response.payment_reference) {
+                // 2. Trigger Paystack with the custom reference from backend
+                const paystackConfig = {
+                    ...config,
+                    reference: response.payment_reference,
+                    email: formData.email || user.email
+                };
+                
+                // We need a way to call initializePayment with the NEW config
+                // Since usePaystackPayment is a hook, we might need to adjust how it's used
+                // Or just use the 'initializePayment' function if it allows overrides (it doesn't usually)
+                
+                // Alternative: Use the Paystack Pop-up directly if possible, or 
+                // just rely on the reference generation being predictable if we can't update it easily.
+                
+                // For 'react-paystack', we might need to store the reference in state and trigger useEffect
+                setPendingRef(response.payment_reference);
+            } else {
+                throw new Error(response.message || 'Failed to initialize order');
+            }
+        } catch (err) {
+            addToast(err.message || 'Server error. Please try again.', 'error');
+            setLoading(false);
+        }
     } else {
         addToast('Payment method not supported yet', 'info');
         setLoading(false);
     }
   };
 
-  if (cartItems.length === 0) {
-    navigate('/cart');
+  const [pendingRef, setPendingRef] = useState(null);
+
+  useEffect(() => {
+    if (pendingRef) {
+        // Update config with the backend reference
+        setPaystackConfig(prev => ({ ...prev, reference: pendingRef }));
+    }
+  }, [pendingRef]);
+
+  // Trigger payment after config is updated with the new reference
+  useEffect(() => {
+    if (pendingRef && paystackConfig.reference === pendingRef) {
+        initializePayment(onSuccess, onClose);
+        setPendingRef(null); // Reset
+    }
+  }, [paystackConfig.reference, pendingRef, initializePayment]);
+
+  useEffect(() => {
+    if (!user) {
+      addToast('Please log in to proceed with checkout', 'info');
+      navigate('/login?redirect=/checkout');
+    }
+  }, [user, navigate, addToast]);
+
+  if (!user || cartItems.length === 0) {
+    if (cartItems.length === 0) navigate('/cart');
     return null;
   }
 
@@ -325,7 +369,7 @@ export default function Checkout() {
                     {errors.zip && <span className="form-error">{errors.zip}</span>}
                     <div style={{ marginTop: '6px' }}>
                       <a 
-                        href="https://ghanapostgps.com/" 
+                        href="https://ghanapostgps.com/map/" 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         style={{ fontSize: '12px', color: 'var(--primary-blue)', textDecoration: 'underline' }}
@@ -490,43 +534,58 @@ export default function Checkout() {
             <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Order Summary</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {cartItems.map(item => (
-                <div key={`${item.id}-${item.selectedColor}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span>{item.quantity}x {item.name}</span>
-                  <span>${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                <div key={`${item.id}-${item.selectedColor}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span>{item.quantity}x {item.name}</span>
+                    {item.selectedColor !== 'Default' && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Color: {item.selectedColor}</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontWeight: 700, color: item.discount_percent > 0 ? 'var(--success)' : 'inherit' }}>
+                      {formatPrice(parseFloat(item.price) * item.quantity)}
+                    </span>
+                    {item.discount_percent > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatPrice(parseFloat(item.original_price || item.price) * item.quantity)}
+                        </span>
+                        <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '1px 4px', borderRadius: '3px' }}>
+                          -{item.discount_percent}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
               <div style={{ height: '1px', background: 'var(--border-light)', margin: '12px 0' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+              <div className="summary-row">
+                <span className="text-muted">Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Estimated Tax</span>
-                <span>${tax.toFixed(2)}</span>
+              <div className="summary-row">
+                <span className="text-muted">Estimated Tax</span>
+                <span>{formatPrice(tax)}</span>
               </div>
               {appliedCoupon && (
-                <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--danger)', background: 'var(--danger-bg)', padding: '8px 12px', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Tag size={14} />
-                    <span>Discount ({appliedCoupon.code})</span>
-                  </div>
-                  <span>-${discount.toFixed(2)}</span>
+                <div className="summary-row" style={{ color: 'var(--danger)' }}>
+                  <span>Discount ({appliedCoupon.code})</span>
+                  <span>-{formatPrice(discount)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Shipping</span>
                   <span style={{ fontSize: '10px', color: 'var(--primary-blue)', fontWeight: 600 }}>
-                    {subtotal > 1000 ? 'Free Shipping (Special Promo)' : (formData.region ? `Standard Rate (${GHANA_REGIONS.find(r => r.code === formData.region)?.label.split('(')[0].trim()})` : 'Base delivery rate')}
+                    {shippingData.is_discounted ? 'Regional Promo (50% Off)' : `Standard Delivery`} 
+                    {shippingData.city && ` • Dispatched from ${shippingData.city}`}
                   </span>
                 </div>
                 <span style={{ color: shippingFee === 0 ? '#22c55e' : 'var(--text-main)', fontWeight: shippingFee === 0 ? 700 : 500 }}>
-                   {shippingFee === 0 ? 'Free' : `$${shippingFee.toFixed(2)}`}
+                   {shippingFee === 0 ? 'Free' : formatPrice(shippingFee)}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20px', fontWeight: 800, marginTop: '12px' }}>
                 <span>Total</span>
-                <span style={{ color: 'var(--primary-blue)' }}>${total.toFixed(2)}</span>
+                <span style={{ color: 'var(--primary-blue)' }}>{formatPrice(total)}</span>
               </div>
             </div>
 

@@ -16,17 +16,17 @@ import { CartProvider, useCart } from './context/CartContext';
 import { WishlistProvider, useWishlist } from './context/WishlistContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import { UserProvider } from './context/UserContext';
-import { WalletProvider } from './context/WalletContext';
-import { SettingsProvider } from './context/SettingsContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
 import Cart from './pages/Cart';
 import Favorites from './pages/Favorites';
-import Transactions from './pages/Transactions';
 import Orders from './pages/Orders';
 import Notifications from './pages/Notifications';
+import Transactions from './pages/Transactions';
 import Support from './pages/Support';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
@@ -44,6 +44,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import ResetPassword from './pages/ResetPassword';
 import TrackOrder from './pages/TrackOrder';
 import CMSPage from './pages/CMSPage';
+import OrderSuccess from './pages/OrderSuccess';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -57,6 +58,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, updateUser, logout, authModal, openAuthModal, closeAuthModal } = useUser();
+  const { formatPrice } = useSettings();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const lastFetchRef = React.useRef(0); 
 
@@ -191,24 +193,8 @@ function AppContent() {
     try {
       if (productsRef.current.length === 0) setLoading(true);
       
-      const data = await fetchProducts();
-      if (data && Array.isArray(data)) {
-          const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL + '/' : 'http://localhost:8000/';
-          
-          const formatURL = (url) => {
-              if (!url) return null;
-              if (url.startsWith('http') || url.startsWith('data:')) return url;
-              return `${API_BASE}${url.startsWith('/') ? url.slice(1) : url}`;
-          };
-
-          const mappedProducts = data.map(p => ({
-              ...p,
-              image: formatURL(p.image_url || p.image),
-              gallery: (Array.isArray(p.gallery) ? p.gallery : []).map(img => formatURL(img)),
-              directions: formatURL(p.directions),
-              price: parseFloat(p.price) || 0,
-              rating: parseFloat(p.rating) || 0
-          }));
+      const mappedProducts = await fetchProducts();
+      if (mappedProducts && Array.isArray(mappedProducts)) {
           
           setProducts(prevProducts => {
             const isDifferent = JSON.stringify(prevProducts) !== JSON.stringify(mappedProducts);
@@ -370,13 +356,14 @@ function AppContent() {
             <Route path="/shop" element={<Shop products={products} onProductClick={handleProductClick} searchQuery={searchQuery} loading={loading} />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/favorites" element={<Favorites onProductClick={handleProductClick} searchQuery={searchQuery} />} />
-            <Route path="/transactions" element={<Transactions searchQuery={searchQuery} />} />
             <Route path="/orders" element={<Orders searchQuery={searchQuery} />} />
             <Route path="/notifications" element={<Notifications searchQuery={searchQuery} />} />
             <Route path="/support" element={<Support searchQuery={searchQuery} />} />
             <Route path="/settings" element={<Settings searchQuery={searchQuery} isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} theme={theme} setTheme={setTheme} />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-success" element={<OrderSuccess />} />
+            <Route path="/transactions" element={<Transactions />} />
 
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -455,7 +442,7 @@ function AppContent() {
                     <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                         {formatDate(order.created_at)}
                     </div>
-                    <div style={{ marginTop: '8px', fontWeight: 600 }}>${parseFloat(order.total_amount || 0).toFixed(2)}</div>
+                    <div style={{ marginTop: '8px', fontWeight: 600 }}>{formatPrice(order.total_amount || 0)}</div>
                 </div>
             ))
           )}
@@ -494,17 +481,17 @@ const AppProviders = ({ children }) => {
   const { user } = useUser();
   return (
     <div key={user?.id} style={{ display: 'contents' }}>
-      <NotificationProvider>
-        <SettingsProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <WalletProvider>
-                {children}
-              </WalletProvider>
-            </CartProvider>
-          </WishlistProvider>
-        </SettingsProvider>
-      </NotificationProvider>
+      <ConfirmProvider>
+        <NotificationProvider>
+          <SettingsProvider>
+            <WishlistProvider>
+              <CartProvider>
+                  {children}
+              </CartProvider>
+            </WishlistProvider>
+          </SettingsProvider>
+        </NotificationProvider>
+      </ConfirmProvider>
     </div>
   );
 };
