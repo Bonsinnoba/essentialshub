@@ -1,89 +1,166 @@
-import React from 'react';
-import { RefreshCcw, HandCoins, AlertCircle, FileText, CheckCircle, Package, Truck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCcw, HandCoins, AlertCircle, FileText, CheckCircle, Package, Truck, Loader2, Info, Mail, RefreshCw } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import DOMPurify from 'dompurify';
+import { parseCMSContent } from '../utils/cmsUtils';
+
+const ICON_MAP = {
+  shield: RefreshCcw,
+  lock: HandCoins,
+  eye: FileText,
+  scroll: FileText,
+  info: Info,
+  mail: Mail,
+  refresh: RefreshCw,
+  truck: Truck,
+  'file-text': FileText,
+  package: Package,
+  'check-circle': CheckCircle,
+  'alert-circle': AlertCircle
+};
 
 export default function Returns() {
-  const { siteSettings } = useSettings();
-  const siteName = siteSettings.siteName || 'us';
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const steps = [
-    {
-      icon: <FileText size={20} />,
-      title: "1. Initiate Return",
-      desc: "Log into your account, navigate to Orders, and select 'Return Item' on the eligible product."
-    },
-    {
-      icon: <Package size={20} />,
-      title: "2. Pack Securely",
-      desc: "Ensure the item is in its original condition with all tags and original packaging included."
-    },
-    {
-      icon: <Truck size={20} />,
-      title: "3. Ship it Back",
-      desc: "Drop the package off at any of our authorized dispatch locations using the provided label."
-    },
-    {
-      icon: <HandCoins size={20} />,
-      title: "4. Get Reimbursed",
-      desc: "Once inspected, refunds are processed to your original payment method within 3-5 days."
-    }
-  ];
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const res = await fetch(`${API_BASE}/cms.php?slug=return-policy`, {
+          headers: { 'X-App-ID': 'storefront' }
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && data.data && parseInt(data.data.is_published) === 1) {
+          const parsed = parseCMSContent(data.data.content);
+          setSections(parsed);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dynamic return policy:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContent();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+         <Loader2 className="animate-spin" size={40} color="var(--primary-blue)" />
+      </div>
+    );
+  }
 
   return (
-    <div className="returns-page" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="returns-page" style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px',
+      paddingBottom: '60px'
+    }}>
       
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-         <div style={{ background: 'var(--danger-bg)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', margin: '0 auto 20px auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+         <div style={{ 
+            background: 'var(--danger-bg)', 
+            width: '64px', 
+            height: '64px', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: 'var(--danger)', 
+            margin: '0 auto 20px auto' 
+         }}>
              <RefreshCcw size={32} />
          </div>
-        <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '12px' }}>Returns & Exchanges</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '600px', margin: '0 auto' }}>
-          We stand behind every component we sell. If you receive a defective or incorrect item, we'll make it right. Please review our policy below for eligible return conditions.
-        </p>
+        <h1 style={{ fontSize: '42px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-1px' }}>Returns & Exchanges</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>Store Policy</p>
       </div>
 
-      <div className="glass" style={{ padding: '30px', borderRadius: '16px', border: '1px solid var(--border-light)', marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '20px' }}>How to Return an Item</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-           {steps.map((s, i) => (
-             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                 <div style={{ background: 'var(--bg-surface)', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', border: '1px solid var(--border-light)' }}>
-                     {s.icon}
-                 </div>
-                 <strong style={{ fontSize: '15px' }}>{s.title}</strong>
-                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>{s.desc}</p>
-             </div>
-           ))}
-        </div>
+      <div className="policy-grid">
+        {sections.length > 0 ? (
+          sections.map((section, idx) => {
+            const IconComp = ICON_MAP[section.iconKey] || RefreshCcw;
+            return (
+              <div key={idx} className="glass section-card animate-slide-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
+                    <IconComp size={24} style={{ color: 'var(--danger)' }} /> {section.originalTitle || section.title}
+                </h2>
+                <div 
+                  className="cms-section-body"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content) }} 
+                />
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass empty-alert">
+             <p style={{ color: 'var(--text-muted)' }}>Return policy is being updated. Please check back later.</p>
+          </div>
+        )}
       </div>
-
-       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-             <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 700, marginBottom: '12px', color: 'var(--success)' }}>
-                 <CheckCircle size={18} /> Eligible for Return
-             </h3>
-             <ul style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                 <li>Dead-on-arrival (DOA) components</li>
-                 <li>Items that are clearly defective or damaged upon delivery</li>
-                 <li>{`Wrong item shipped by ${siteName}`}</li>
-                 <li>Unopened STEM kits in original sealed packaging</li>
-                 <li>Modules and breakout boards that never powered on</li>
-             </ul>
-          </div>
-          <div className="glass" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-             <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 700, marginBottom: '12px', color: 'var(--danger)' }}>
-                 <AlertCircle size={18} /> Non-Returnable Items
-             </h3>
-             <ul style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.8', paddingLeft: '20px' }}>
-                 <li>Opened component packs (resistors, capacitors, etc.)</li>
-                 <li>Items damaged by incorrect wiring or ESD mishandling</li>
-                 <li>STEM kits with assembled or soldered parts</li>
-                 <li>Clearance or final sale components</li>
-                 <li>Custom-cut wire spools or bulk orders</li>
-             </ul>
-          </div>
-       </div>
       
+      <style>{`
+        .policy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .section-card {
+            padding: 40px;
+            border-radius: 32px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .section-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
+        .section-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            border-color: var(--danger);
+        }
+
+        .cms-section-body {
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+        .cms-section-body p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        .cms-section-body ul, .cms-section-body ol {
+            padding-left: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            gap: 10px;
+        }
+        .cms-section-body li {
+            opacity: 0.9;
+        }
+
+        .empty-alert {
+            padding: 40px;
+            border-radius: 32px;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 900px) {
+           .policy-grid {
+              grid-template-columns: 1fr;
+           }
+           .section-card:last-child:nth-child(odd) {
+              grid-column: auto;
+           }
+        }
+      `}</style>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Settings, Tag,
   LogOut, MapPin, ShieldAlert, Database, Globe, Zap, Activity, ShieldCheck,
   Star, Bell, ShoppingBag, RotateCcw, ClipboardList, MessageSquare, Truck, Megaphone,
-  BookOpen, Mail
+  BookOpen, Mail, Layout
 } from 'lucide-react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 
@@ -31,6 +31,7 @@ export default function Sidebar() {
     { icon: <Bell size={20} />, label: 'System Alerts', path: '/notifications', visible: true },
     { icon: <Mail size={20} />, label: 'Email Engine', path: '/email-dashboard', visible: isManager && !isPicker && !isMarketing },
     { icon: <BookOpen size={20} />, label: 'Help & guides', path: '/help', visible: true },
+    { icon: <Layout size={20} />, label: 'Content Manager', path: '/cms', visible: isManager && !isPicker },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings', visible: !isMarketing },
   ].filter(item => item.visible);
 

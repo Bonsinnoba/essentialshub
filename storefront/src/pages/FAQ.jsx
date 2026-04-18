@@ -1,119 +1,173 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HelpCircle, Loader2, Info, Mail, RefreshCw, Truck, MessageCircle, Clock, Map } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import DOMPurify from 'dompurify';
+import { parseCMSContent } from '../utils/cmsUtils';
+
+const ICON_MAP = {
+  shield: Info,
+  lock: Info,
+  eye: Info,
+  scroll: Info,
+  info: Info,
+  mail: Mail,
+  refresh: RefreshCw,
+  truck: Truck,
+  message: MessageCircle,
+  clock: Clock,
+  map: Map,
+  help: HelpCircle
+};
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState(0);
   const { siteSettings } = useSettings();
-  const { siteName, siteEmail, phone1, phone2 } = siteSettings;
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const faqs = useMemo(() => {
-    const phoneLine = [phone1, phone2].filter(Boolean).join(' / ') || 'our support number';
-    const email = siteEmail || 'support@example.com';
-
-    return [
-      {
-        q: `What types of products does ${siteName} sell?`,
-        a: `${siteName} offers a curated catalog of products. Check the shop and categories for current availability, specifications, and pricing.`
-      },
-      {
-        q: 'Are products genuine and quality-checked?',
-        a: `We work with verified suppliers and perform quality checks before stocking. If you receive a defective item, contact us for a replacement where eligible.`
-      },
-      {
-        q: 'Can I modify or cancel my order?',
-        a: "Orders can be modified or cancelled within 1 hour of placement in many cases. Once an order enters the 'processing' or 'shipped' phase, it may not be altered. You may return eligible items after delivery according to our returns policy."
-      },
-      {
-        q: 'Do you offer bulk or institutional pricing?',
-        a: `Yes — contact us at ${email} with your list and quantities for a quote.`
-      },
-      {
-        q: 'What payment methods are accepted?',
-        a: 'We accept major cards, mobile money, and other methods shown at checkout. All transactions are processed securely.'
-      },
-      {
-        q: 'Do I need an account to place an order?',
-        a: 'An account helps us provide order history, tracking, and support. Sign-up may be required depending on store settings.'
-      },
-      {
-        q: 'How do I contact customer support?',
-        a: `Use the Support section in your account, email ${email}, call ${phoneLine}, or reach us on WhatsApp if listed on the site.`
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const res = await fetch(`${API_BASE}/cms.php?slug=faq`, {
+          headers: { 'X-App-ID': 'storefront' }
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && data.data && parseInt(data.data.is_published) === 1) {
+          const parsed = parseCMSContent(data.data.content);
+          setSections(parsed);
+        }
+      } catch (err) {
+        console.error("Failed to fetch FAQ content:", err);
+      } finally {
+        setLoading(false);
       }
-    ];
-  }, [siteName, siteEmail, phone1, phone2]);
+    };
+    fetchContent();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+         <Loader2 className="animate-spin" size={40} color="var(--primary-blue)" />
+      </div>
+    );
+  }
 
   return (
-    <div className="faq-page" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="faq-page" style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px',
+      paddingBottom: '60px'
+    }}>
       
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-         <div style={{ background: 'var(--info-bg)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-blue)', margin: '0 auto 20px auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+         <div style={{ 
+            background: 'var(--info-bg)', 
+            width: '64px', 
+            height: '64px', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: 'var(--primary-blue)', 
+            margin: '0 auto 20px auto' 
+         }}>
              <HelpCircle size={32} />
          </div>
-        <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '12px' }}>Frequently Asked Questions</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '600px', margin: '0 auto' }}>
-          {`Find quick answers to common questions about shopping with ${siteName}.`}
-        </p>
+        <h1 style={{ fontSize: '42px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-1px' }}>Frequently Asked Questions</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>Answers to common queries</p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {faqs.map((faq, index) => (
-          <div 
-            key={index} 
-            className="glass"
-            style={{ 
-              borderRadius: '16px', 
-              border: '1px solid var(--border-light)',
-              overflow: 'hidden',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <button
-              onClick={() => setOpenIndex(openIndex === index ? -1 : index)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '24px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                color: 'var(--text-main)',
-                fontWeight: 700,
-                fontSize: '16px'
-              }}
-            >
-              <span style={{ paddingRight: '20px' }}>{faq.q}</span>
-              <div style={{ color: openIndex === index ? 'var(--primary-blue)' : 'var(--text-muted)' }}>
-                {openIndex === index ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      <div className="policy-grid">
+        {sections.length > 0 ? (
+          sections.map((section, idx) => {
+            const IconComp = ICON_MAP[section.iconKey] || Info;
+            return (
+              <div key={idx} className="glass section-card animate-slide-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '20px', fontWeight: 800, marginBottom: '20px' }}>
+                    <IconComp size={20} style={{ color: 'var(--primary-blue)' }} /> {section.originalTitle || section.title}
+                </h2>
+                <div 
+                  className="cms-section-body"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content) }} 
+                />
               </div>
-            </button>
-            
-            <div 
-              style={{ 
-                height: openIndex === index ? 'auto' : 0, 
-                opacity: openIndex === index ? 1 : 0,
-                padding: openIndex === index ? '0 24px 24px 24px' : '0 24px',
-                color: 'var(--text-muted)',
-                lineHeight: '1.6',
-                fontSize: '15px',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {faq.a}
-            </div>
+            );
+          })
+        ) : (
+          <div className="glass empty-alert">
+             <p style={{ color: 'var(--text-muted)' }}>FAQ content is being updated. Please check back later.</p>
           </div>
-        ))}
+        )}
       </div>
 
-      <div style={{ marginTop: '60px', textAlign: 'center', padding: '40px', background: 'var(--bg-surface)', borderRadius: '16px', border: '1px dashed var(--border-light)' }}>
-         <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>Still have questions?</h3>
-         <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>Our support team is here to help.</p>
-         <button className="btn-primary" style={{ padding: '12px 24px', fontWeight: 600 }}>Contact Support</button>
+      <div style={{ marginTop: '60px', textAlign: 'center', padding: '40px', background: 'var(--bg-surface)', borderRadius: '32px', border: '1px dashed var(--border-light)' }}>
+         <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>Still have questions?</h3>
+         <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '24px' }}>Our technical support team is here to help with your projects.</p>
+         <button className="btn-primary" style={{ padding: '12px 32px', fontWeight: 700, borderRadius: '14px' }}>Contact Support</button>
       </div>
-      
+
+      <style>{`
+        .policy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .section-card {
+            padding: 40px;
+            border-radius: 32px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .section-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
+        .section-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            border-color: var(--primary-blue);
+        }
+
+        .cms-section-body {
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+        .cms-section-body p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        .cms-section-body ul, .cms-section-body ol {
+            padding-left: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            gap: 10px;
+        }
+        .cms-section-body li {
+            opacity: 0.9;
+        }
+
+        .empty-alert {
+            padding: 40px;
+            border-radius: 32px;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 900px) {
+           .policy-grid {
+              grid-template-columns: 1fr;
+           }
+           .section-card:last-child:nth-child(odd) {
+              grid-column: auto;
+           }
+        }
+      `}</style>
     </div>
   );
 }

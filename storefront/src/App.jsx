@@ -44,6 +44,7 @@ const FAQ = lazy(() => import('./pages/FAQ'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const TrackOrder = lazy(() => import('./pages/TrackOrder'));
 const CMSPage = lazy(() => import('./pages/CMSPage'));
+const AboutUs = lazy(() => import('./pages/AboutUs'));
 const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 
 const ScrollToTop = () => {
@@ -411,6 +412,7 @@ function AppContent() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/order-success" element={<RouteLoader><OrderSuccess /></RouteLoader>} />
             <Route path="/transactions" element={<RouteLoader><Transactions /></RouteLoader>} />
+            <Route path="/about" element={<RouteLoader><AboutUs /></RouteLoader>} />
 
             <Route path="/reset-password" element={<RouteLoader><ResetPassword /></RouteLoader>} />
             <Route path="/privacy-policy" element={<RouteLoader><PrivacyPolicy /></RouteLoader>} />

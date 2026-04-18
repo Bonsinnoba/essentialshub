@@ -31,6 +31,7 @@ const PickupLocationManager = lazy(() => import('./pages/super-user/PickupLocati
 const PickerDashboard = lazy(() => import('./pages/PickerDashboard'));
 const HelpCenter = lazy(() => import('./pages/HelpCenter'));
 const EmailDashboard = lazy(() => import('./pages/EmailDashboard'));
+const CMSManager = lazy(() => import('./pages/CMSManager'));
 
 // ─── Toast Overlay ────────────────────────────────────────────────────────────
 const AdminToasts = () => {
@@ -339,6 +340,7 @@ function AppContent() {
         <Route path="/notifications" element={<ProtectedLayout><RouteLoader><SystemNotifications /></RouteLoader></ProtectedLayout>} />
         <Route path="/help" element={<ProtectedLayout><RouteLoader><HelpCenter /></RouteLoader></ProtectedLayout>} />
         <Route path="/email-dashboard" element={<ProtectedLayout><RouteLoader><EmailDashboard /></RouteLoader></ProtectedLayout>} />
+        <Route path="/cms" element={<ProtectedLayout><RouteLoader><CMSManager /></RouteLoader></ProtectedLayout>} />
         <Route path="/settings" element={<ProtectedLayout><RouteLoader><Settings /></RouteLoader></ProtectedLayout>} />
 
         <Route path="/super/dashboard" element={<ProtectedLayout requireSuper><RouteLoader><SuperDashboard /></RouteLoader></ProtectedLayout>} />

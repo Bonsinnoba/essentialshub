@@ -1,16 +1,65 @@
-import React from 'react';
-import { Shield, Lock, Eye, ScrollText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Lock, Eye, ScrollText, Loader2, Info, Mail, RefreshCw, Truck, FileText } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import DOMPurify from 'dompurify';
+import { parseCMSContent } from '../utils/cmsUtils';
+
+const ICON_MAP = {
+  shield: Shield,
+  lock: Lock,
+  eye: Eye,
+  scroll: ScrollText,
+  info: Info,
+  mail: Mail,
+  refresh: RefreshCw,
+  truck: Truck,
+  'file-text': FileText
+};
 
 export default function PrivacyPolicy() {
   const { siteSettings } = useSettings();
-  const { siteName, siteEmail } = siteSettings;
+  const { siteEmail } = siteSettings;
   const contactEmail = siteEmail || 'support@example.com';
+
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const res = await fetch(`${API_BASE}/cms.php?slug=privacy-policy`, {
+          headers: { 'X-App-ID': 'storefront' }
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && data.data && parseInt(data.data.is_published) === 1) {
+          const parsed = parseCMSContent(data.data.content);
+          setSections(parsed);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dynamic privacy policy:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContent();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+         <Loader2 className="animate-spin" size={40} color="var(--primary-blue)" />
+      </div>
+    );
+  }
+
   return (
     <div className="privacy-policy-page" style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      gap: '24px'
+      gap: '24px',
+      paddingBottom: '60px'
     }}>
       <div style={{ textAlign: 'center', marginBottom: '60px' }}>
         <div style={{ 
@@ -27,55 +76,95 @@ export default function PrivacyPolicy() {
           <Shield size={32} />
         </div>
         <h1 style={{ fontSize: '42px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-1px' }}>Privacy Policy</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>Last updated: February 14, 2026</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>Store Policy</p>
       </div>
 
-      <div className="glass" style={{ padding: '40px', borderRadius: '32px', marginBottom: '40px' }}>
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
-            <Eye size={24} className="text-primary" /> 1. Information We Collect
-          </h2>
-          <p style={{ lineHeight: '1.8', color: 'var(--text-main)', opacity: 0.9 }}>
-            {`At ${siteName}, we collect information that allows us to provide our services. This includes:`}
-          </p>
-          <ul style={{ paddingLeft: '20px', marginTop: '16px', lineHeight: '1.8', display: 'grid', gap: '10px' }}>
-            <li><strong>Personal Details:</strong> Name, email address, phone number, and delivery address.</li>
-            <li><strong>Transaction Data:</strong> Details about payments and the products you've purchased from us.</li>
-            <li><strong>Technical Data:</strong> IP address, login data, browser type, and version, time zone setting, and location.</li>
-          </ul>
-        </section>
-
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
-            <Lock size={24} className="text-primary" /> 2. How We Use Your Data
-          </h2>
-          <p style={{ lineHeight: '1.8', color: 'var(--text-main)', opacity: 0.9 }}>
-            We use your data to process orders, manage your account, and, if you agree, to email you about other products and services we think may be of interest to you.
-          </p>
-        </section>
-
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
-            <Shield size={24} className="text-primary" /> 3. Data Security
-          </h2>
-          <p style={{ lineHeight: '1.8', color: 'var(--text-main)', opacity: 0.9 }}>
-            We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used, or accessed in an unauthorized way. We limit access to your personal data to those employees, agents, and contractors who have a business need to know.
-          </p>
-        </section>
-
-        <section>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
-            <ScrollText size={24} className="text-primary" /> 4. Your Legal Rights
-          </h2>
-          <p style={{ lineHeight: '1.8', color: 'var(--text-main)', opacity: 0.9 }}>
-            Under certain circumstances, you have rights under data protection laws in relation to your personal data, including the right to request access, correction, erasure, restriction, and transfer.
-          </p>
-        </section>
+      <div className="policy-grid">
+        {sections.length > 0 ? (
+          sections.map((section, idx) => {
+            const IconComp = ICON_MAP[section.iconKey] || Info;
+            return (
+              <div key={idx} className="glass section-card animate-slide-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: 800, marginBottom: '20px' }}>
+                    <IconComp size={24} style={{ color: 'var(--primary-blue)' }} /> {section.originalTitle || section.title}
+                </h2>
+                <div 
+                  className="cms-section-body"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.content) }} 
+                />
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass empty-alert">
+             <p style={{ color: 'var(--text-muted)' }}>Policy content is being updated. Please check back later.</p>
+          </div>
+        )}
       </div>
 
-      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', marginTop: '40px' }}>
         <p>{`If you have any questions about this privacy policy, please contact us at ${contactEmail}`}</p>
       </div>
+
+      <style>{`
+        .policy-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .section-card {
+            padding: 40px;
+            border-radius: 32px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .section-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
+        .section-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            border-color: var(--primary-blue);
+        }
+
+        .cms-section-body {
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+        .cms-section-body p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        .cms-section-body ul, .cms-section-body ol {
+            padding-left: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            gap: 10px;
+        }
+        .cms-section-body li {
+            opacity: 0.9;
+        }
+
+        .empty-alert {
+            padding: 40px;
+            border-radius: 32px;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 900px) {
+           .policy-grid {
+              grid-template-columns: 1fr;
+           }
+           .section-card:last-child:nth-child(odd) {
+              grid-column: auto;
+           }
+        }
+      `}</style>
     </div>
   );
 }
