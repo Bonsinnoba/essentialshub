@@ -110,7 +110,10 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
       .slice(0, 4);
   }
 
+  const isOutOfStock = product.status === 'out_of_stock' || (product.stock_quantity !== null && product.stock_quantity <= 0);
+
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
     if (!user) {
       if (openAuthModal) openAuthModal('signin');
       return;
@@ -228,10 +231,10 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '20px', alignItems: 'flex-end' }}>
                 <div className="detail-section">
                   <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Quantity</label>
-                  <div className="quantity-selector" style={{ background: 'var(--bg-surface-secondary)', padding: '4px', borderRadius: '12px' }}>
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={14} /></button>
-                    <span style={{ margin: '0 12px', fontWeight: 700 }}>{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)}><Plus size={14} /></button>
+                  <div className="quantity-selector" style={{ background: 'var(--bg-surface-secondary)', padding: '4px', borderRadius: '12px', opacity: isOutOfStock ? 0.5 : 1 }}>
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isOutOfStock}><Minus size={14} /></button>
+                    <span style={{ margin: '0 12px', fontWeight: 700 }}>{isOutOfStock ? 0 : quantity}</span>
+                    <button onClick={() => setQuantity(quantity + 1)} disabled={isOutOfStock}><Plus size={14} /></button>
                   </div>
                 </div>
 
@@ -314,7 +317,7 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
                 <button 
                   className={`btn-primary ${isAdding ? 'animate-pulse-success' : ''}`}
                   onClick={handleAddToCart}
-                  disabled={isAdding}
+                  disabled={isAdding || isOutOfStock}
                   style={{ 
                     flex: 1.5, 
                     padding: '14px 10px', 
@@ -325,14 +328,15 @@ export default function ProductModal({ product, products = [], isOpen, onClose, 
                     gap: '8px',
                     fontSize: '14px',
                     fontWeight: 700,
-                    boxShadow: isAdding ? '0 4px 20px rgba(16, 185, 129, 0.4)' : '0 4px 12px rgba(59, 130, 246, 0.2)',
-                    background: isAdding ? 'var(--success)' : 'var(--primary-blue)',
+                    boxShadow: isAdding ? '0 4px 20px rgba(16, 185, 129, 0.4)' : (isOutOfStock ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.2)'),
+                    background: isAdding ? 'var(--success)' : (isOutOfStock ? 'var(--text-muted)' : 'var(--primary-blue)'),
                     whiteSpace: 'nowrap',
+                    cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                   }}
                 >
                   <ShoppingCart size={18} className={isAdding ? 'animate-scale-in' : ''} />
-                  {isAdding ? 'Added!' : 'Add to Cart'}
+                  {isAdding ? 'Added!' : (isOutOfStock ? 'Sold Out' : 'Add to Cart')}
                 </button>
                 <button 
                   className={`btn-outline ${inWishlist ? 'active' : ''} ${isSaving ? 'animate-scale-in' : ''}`}

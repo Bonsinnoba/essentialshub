@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { useNotifications } from '../context/NotificationContext';
 
 
-export default function ProductCard({ id, name, price, image, rating, discount_percent, sale_ends_at, stock_quantity, onClick, onRemove }) {
+export default function ProductCard({ id, name, price, image, rating, discount_percent, sale_ends_at, stock_quantity, status = 'active', onClick, onRemove }) {
   const { formatPrice } = useSettings();
   const safeRating = parseFloat(rating) || 0;
   
@@ -22,6 +22,7 @@ export default function ProductCard({ id, name, price, image, rating, discount_p
   const { user, openAuthModal } = useUser();
   const { addToCart } = useCart();
   const { addToast } = useNotifications();
+  const isOutOfStock = status === 'out_of_stock' || (stockQty !== null && stockQty <= 0);
   const inWishlist = isInWishlist(id); 
 
   const handleWishlistClick = (e) => {
@@ -35,6 +36,7 @@ export default function ProductCard({ id, name, price, image, rating, discount_p
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     if (!user) {
       if (openAuthModal) openAuthModal('signin');
       return;
@@ -66,9 +68,14 @@ export default function ProductCard({ id, name, price, image, rating, discount_p
       {!onRemove && (
         <button 
           onClick={handleAddToCart}
-          className="add-to-cart-btn"
-          title="Add to cart"
-          aria-label="Add to cart"
+          className={`add-to-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
+          title={isOutOfStock ? "Sold Out" : "Add to cart"}
+          aria-label={isOutOfStock ? "Sold Out" : "Add to cart"}
+          disabled={isOutOfStock}
+          style={{
+            opacity: isOutOfStock ? 0.5 : 1,
+            cursor: isOutOfStock ? 'not-allowed' : 'pointer'
+          }}
         >
           <ShoppingCart size={18} />
         </button>
@@ -111,6 +118,34 @@ export default function ProductCard({ id, name, price, image, rating, discount_p
             letterSpacing: '0.02em'
           }}>
             {discount}% OFF
+          </div>
+        )}
+        {isOutOfStock && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 5
+          }}>
+            <span style={{
+              background: 'white',
+              color: 'black',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontWeight: 800,
+              fontSize: '13px',
+              letterSpacing: '0.05em',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+            }}>
+              SOLD OUT
+            </span>
           </div>
         )}
       </div>

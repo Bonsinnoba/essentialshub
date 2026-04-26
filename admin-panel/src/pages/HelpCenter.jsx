@@ -17,6 +17,7 @@ import {
   Lightbulb,
   MessageSquare,
   Mail,
+  FileText,
 } from 'lucide-react';
 import {
   HelpScreenshot,
@@ -101,6 +102,7 @@ export default function HelpCenter() {
     ...(!isPicker && (!isAccountant || !isMarketing) ? [{ id: 'marketing', label: 'Marketing' }] : []),
     ...(!isMarketing && !isPicker ? [{ id: 'customers', label: 'Customers' }] : []),
     ...(!isAccountant ? [{ id: 'staffhub', label: 'Staff Hub' }] : []),
+    ...(isManager ? [{ id: 'cms', label: 'Content Management' }] : []),
     ...(isManager ? [{ id: 'email-engine', label: 'Email Engine' }] : []),
     { id: 'alerts', label: 'Alerts' },
     ...(!isMarketing ? [{ id: 'settings', label: 'Settings' }] : []),
@@ -690,6 +692,42 @@ export default function HelpCenter() {
                       <div style={{ height: 32, borderRadius: 10, background: 'var(--bg-surface-secondary)', marginTop: 8 }} />
                     </MockCard>
                   </div>
+                </div>
+              </HelpScreenshot>
+            </Section>
+          )}
+
+          {isManager && (
+            <Section id="cms" icon={<FileText size={22} />} title="Content Management (CMS)">
+              <p className="help-lead">
+                <strong>Content Management</strong> gives you control over the storefront's legal policies, About Us page, and FAQs. It uses a "Smart Parser" that automatically turns your edited text into premium, grid-based layout cards on the storefront.
+              </p>
+              <JumpLink to="/cms">Open Content Manager</JumpLink>
+
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: '20px 0 8px', color: 'var(--text-main)' }}>Managing policies & pages</h3>
+              <StepList
+                items={[
+                  'Select a page from the dropdown menu (e.g., Privacy Policy, About Us, FAQ).',
+                  'Use the rich-text editor to modify content. To create a new "Card" on the storefront, simply use a Level 2 Header (H2) for the title.',
+                  'The system automatically detects your headers and splits the content into separate, beautifully styled grid cards.',
+                  'Icons are automatically mapped based on your titles (e.g., a section called "Shipping" will automatically get a Truck icon).',
+                  'Click Save Changes. Updates reflect on the storefront immediately across all policy-related routes.',
+                ]}
+              />
+              <Callout type="tip">
+                Always use standard headers (H2) for your section titles. This ensures the storefront can correctly segment your content into the premium "Frosted Glass" grid layout. If you don't use headers, all text will be lumped into a single large card.
+              </Callout>
+              <Callout type="note">
+                The **About Us** and **FAQ** pages are now fully dynamic. Any changes you make here will instantly update the storefront navigation and content, allowing for zero-code site updates.
+              </Callout>
+              <HelpScreenshot file="cms-manager.png" title="Content Management" urlBar="…/cms">
+                <MockSidebar activeLabel="Content Manager" />
+                <div className="help-mock-main">
+                  <div className="help-mock-h1" />
+                  <MockCard>
+                    <div style={{ height: 32, borderRadius: 8, background: 'var(--bg-surface-secondary)', marginBottom: 12 }} />
+                    <div style={{ height: 120, borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-main)' }} />
+                  </MockCard>
                 </div>
               </HelpScreenshot>
             </Section>

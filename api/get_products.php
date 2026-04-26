@@ -29,6 +29,7 @@ try {
                    )) as stock_quantity
             FROM products p 
             WHERE p.category = ? 
+            AND p.status IN ('active', 'out_of_stock')
             ORDER BY p.created_at DESC
         ");
         $stmt->execute([$category]);
@@ -49,6 +50,7 @@ try {
                        )
                    )) as stock_quantity
             FROM products p 
+            WHERE p.status IN ('active', 'out_of_stock')
             ORDER BY p.created_at DESC
         ");
     }

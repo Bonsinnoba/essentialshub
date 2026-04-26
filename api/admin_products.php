@@ -325,8 +325,9 @@ if ($method === 'POST') {
 
         try {
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("INSERT INTO products (name, category, price, discount_percent, sale_ends_at, stock_quantity, rating, description, image_url, gallery, colors, specs, included, directions, product_code, location, aisle, rack, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $aisle, $rack, $bin]);
+            $status = ($stock > 0) ? 'active' : 'out_of_stock';
+            $stmt = $pdo->prepare("INSERT INTO products (name, category, price, discount_percent, sale_ends_at, stock_quantity, rating, description, image_url, gallery, colors, specs, included, directions, product_code, location, aisle, rack, bin, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $aisle, $rack, $bin, $status]);
             $productId = $pdo->lastInsertId();
 
             if (is_array($variants)) {
@@ -398,8 +399,10 @@ if ($method === 'POST') {
             $oldProduct = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, category = ?, price = ?, discount_percent = ?, sale_ends_at = ?, stock_quantity = ?, rating = ?, description = ?, image_url = ?, gallery = ?, colors = ?, specs = ?, included = ?, directions = ?, product_code = ?, location = ?, aisle = ?, rack = ?, bin = ? WHERE id = ?");
-            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $aisle, $rack, $bin, $id]);
+            // Manual status sync during update
+            $newStatus = ($stock > 0) ? 'active' : 'out_of_stock';
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, category = ?, price = ?, discount_percent = ?, sale_ends_at = ?, stock_quantity = ?, rating = ?, description = ?, image_url = ?, gallery = ?, colors = ?, specs = ?, included = ?, directions = ?, product_code = ?, location = ?, aisle = ?, rack = ?, bin = ?, status = ? WHERE id = ?");
+            $stmt->execute([$name, $category, $price, $discount_percent, $sale_ends_at, $stock, $rating, $description, $image_url, $gallery_json, $colors, $specs, $included, $directions_url, $product_code, $location, $aisle, $rack, $bin, $newStatus, $id]);
 
             if ($oldProduct) {
                 if ($image_url !== $oldProduct['image_url'] && $oldProduct['image_url'] && file_exists($oldProduct['image_url']) && is_file($oldProduct['image_url'])) unlink($oldProduct['image_url']);
@@ -452,23 +455,46 @@ if ($method === 'POST') {
         }
 
         try {
+            // Check if product is tied to any historical orders
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE product_id = ?");
+            $checkStmt->execute([$id]);
+            $orderCount = (int)$checkStmt->fetchColumn();
+
             $stmt = $pdo->prepare("SELECT image_url, gallery, directions FROM products WHERE id = ?");
             $stmt->execute([$id]);
             $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($product) {
-                $filesToDelete = [$product['image_url'], $product['directions']];
-                $gallery = json_decode($product['gallery'] ?? '[]', true);
-                if (is_array($gallery)) $filesToDelete = array_merge($filesToDelete, $gallery);
-                foreach ($filesToDelete as $file) {
-                    if ($file && file_exists($file) && is_file($file)) unlink($file);
+            if ($orderCount === 0) {
+                // SCENARIO A: No orders -> Full Hard Delete + Server Wipe
+                if ($product) {
+                    $filesToDelete = [$product['image_url'], $product['directions']];
+                    $gallery = json_decode($product['gallery'] ?? '[]', true);
+                    if (is_array($gallery)) $filesToDelete = array_merge($filesToDelete, $gallery);
+                    foreach ($filesToDelete as $file) {
+                        if ($file && file_exists($file) && is_file($file)) unlink($file);
+                    }
                 }
-            }
+                $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+                logger('warn', 'PRODUCTS', "Product hard-deleted (ID: {$id}) by {$userName} - No historical orders found.");
+                logAdminAudit($pdo, $userId, 'product.hard_delete', 'product', (string)$id, []);
+                echo json_encode(['success' => true, 'message' => 'Product and all files securely deleted.']);
 
-            $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
-            logger('warn', 'PRODUCTS', "Product deleted (ID: {$id}) by {$userName}");
-            logAdminAudit($pdo, $userId, 'product.delete', 'product', (string)$id, []);
-            echo json_encode(['success' => true]);
+            } else {
+                // SCENARIO B: Has orders -> Soft Delete (Archive) + Media Pruning
+                if ($product) {
+                    $filesToPrune = [$product['directions']];
+                    $gallery = json_decode($product['gallery'] ?? '[]', true);
+                    if (is_array($gallery)) $filesToPrune = array_merge($filesToPrune, $gallery);
+                    foreach ($filesToPrune as $file) {
+                        if ($file && file_exists($file) && is_file($file)) unlink($file);
+                    }
+                }
+                // Keep image_url for history, clear gallery/directions to save DB space
+                $pdo->prepare("UPDATE products SET status = 'archived', gallery = '[]', directions = NULL WHERE id = ?")->execute([$id]);
+                logger('warn', 'PRODUCTS', "Product archived/soft-deleted with media pruning (ID: {$id}) by {$userName}");
+                logAdminAudit($pdo, $userId, 'product.archive', 'product', (string)$id, ['status' => 'archived', 'pruned' => true]);
+                echo json_encode(['success' => true, 'message' => 'Product archived. Gallery and manuals pruned to save storage.']);
+            }
         } catch (PDOException $e) {
             error_log("Product deletion failed: " . $e->getMessage());
             http_response_code(500);
